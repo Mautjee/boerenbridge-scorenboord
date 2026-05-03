@@ -1,0 +1,11 @@
+.git
+node_modules
+.vinxi
+dist
+.output
+data
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
