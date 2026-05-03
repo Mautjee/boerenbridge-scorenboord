@@ -1,0 +1,27 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build output
+.output
+dist
+
+# Database (we want to persist via volume, not in image)
+*.db
+*.db-journal
+drizzle
+
+# Environment
+.env
+.env.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
