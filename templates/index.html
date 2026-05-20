@@ -1,0 +1,97 @@
+{{define "index_page"}}
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boerenbridge Scorebord</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style type="text/tailwindcss">
+        @layer base {
+            body { @apply bg-gray-50; }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-emerald-50 to-green-100">
+    <nav class="bg-emerald-700 text-white shadow-lg">
+        <div class="max-w-4xl mx-auto px-4 py-3">
+            <a href="/" class="text-xl font-bold">🃏 Boerenbridge Scorebord</a>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        <div class="bg-white rounded-xl shadow-lg p-8">
+            <h1 class="text-3xl font-bold text-emerald-800 mb-2">Nieuw Spel</h1>
+            <p class="text-gray-600 mb-6">Voer de namen van de spelers in om een nieuw Boerenbridge spel te beginnen. Minimaal 2 spelers vereist.</p>
+
+            <form id="player-form" method="POST" action="/game">
+                <div id="player-inputs" class="space-y-3 mb-6">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm">1</span>
+                        <input type="text" name="player_0" required
+                            class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                            placeholder="Naam speler 1">
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm">2</span>
+                        <input type="text" name="player_1" required
+                            class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                            placeholder="Naam speler 2">
+                    </div>
+                </div>
+
+                <button type="button" id="add-player-btn"
+                    class="mb-6 px-4 py-2 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition">
+                    + Speler toevoegen
+                </button>
+
+                <div class="flex items-center gap-4">
+                    <button type="submit"
+                        class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">
+                        Start Spel
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="mt-8 bg-white rounded-xl shadow-lg p-8">
+            <h2 class="text-xl font-bold text-emerald-800 mb-4">Spelregels</h2>
+            <ul class="space-y-2 text-gray-700">
+                <li>🃏 Elke speler krijgt per ronde een aantal kaarten: ronde 1 = 1 kaart, ronde 2 = 2 kaarten, enzovoort tot het maximum, dan weer terug (piramide).</li>
+                <li>🎯 <strong>Blinde regel:</strong> De biedingen mogen samen niet optellen tot precies het aantal slagen (kaarten) in die ronde.</li>
+                <li>✅ <strong>Bod gehaald:</strong> 10 punten + 2 punten per gewonnen slag.</li>
+                <li>❌ <strong>Bod niet gehaald:</strong> -2 punten per slag verschil.</li>
+            </ul>
+        </div>
+    </main>
+
+    <script>
+        const addBtn = document.getElementById('add-player-btn');
+        const inputs = document.getElementById('player-inputs');
+        let playerCount = 2;
+
+        addBtn.addEventListener('click', function() {
+            playerCount++;
+            if (playerCount > 8) {
+                alert('Maximaal 8 spelers toegestaan.');
+                return;
+            }
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-3';
+            div.innerHTML = `
+                <span class="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm">${playerCount}</span>
+                <input type="text" name="player_${playerCount - 1}" required
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    placeholder="Naam speler ${playerCount}">
+                <button type="button" class="remove-player px-2 py-1 text-red-500 hover:text-red-700 text-xl">&times;</button>
+            `;
+            inputs.appendChild(div);
+
+            div.querySelector('.remove-player').addEventListener('click', function() {
+                div.remove();
+            });
+        });
+    </script>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,47 @@
+{{define "summary_partial"}}
+<div class="bg-white rounded-xl shadow-lg p-6">
+    <div class="mb-4">
+        <h2 class="text-2xl font-bold text-emerald-800">Resultaten ronde {{.CurrentRound}}</h2>
+        <p class="text-gray-600 mt-1">{{.CardsPerRound}} {{if eq .CardsPerRound 1}}kaart{{else}}kaarten{{end}} per speler</p>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead>
+                <tr class="border-b-2 border-emerald-200">
+                    <th class="text-left py-2 px-3 font-semibold text-gray-700">Speler</th>
+                    <th class="text-center py-2 px-3 font-semibold text-gray-700">Bod</th>
+                    <th class="text-center py-2 px-3 font-semibold text-gray-700">Slagen</th>
+                    <th class="text-center py-2 px-3 font-semibold text-gray-700">Punten</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Results}}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-2 px-3 font-medium text-gray-800">{{.PlayerName}}</td>
+                    <td class="text-center py-2 px-3">{{.Bid.Value}}</td>
+                    <td class="text-center py-2 px-3">{{.TricksWon.Value}}</td>
+                    <td class="text-center py-2 px-3 font-bold {{if ge .Score.Value 0}}text-emerald-700{{else}}text-red-600{{end}}">
+                        {{if ge .Score.Value 0}}+{{end}}{{.Score.Value}}
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-6">
+        {{if .IsLastRound}}
+        <button hx-post="/game/{{.GameID}}/next" hx-target="#game-content" hx-swap="innerHTML"
+            class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">
+            Bekijk eindstand
+        </button>
+        {{else}}
+        <button hx-post="/game/{{.GameID}}/next" hx-target="#game-content" hx-swap="innerHTML"
+            class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">
+            Volgende ronde
+        </button>
+        {{end}}
+    </div>
+</div>
+{{end}}

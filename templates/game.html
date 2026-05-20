@@ -1,0 +1,36 @@
+{{define "game_page"}}
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boerenbridge Scorebord</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style type="text/tailwindcss">
+        @layer base {
+            body { @apply bg-gray-50; }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-emerald-50 to-green-100">
+    <nav class="bg-emerald-700 text-white shadow-lg">
+        <div class="max-w-4xl mx-auto px-4 py-3">
+            <a href="/" class="text-xl font-bold">🃏 Boerenbridge Scorebord</a>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 py-6">
+        {{template "scoreboard_partial" .}}
+
+        <div id="game-content" class="mt-6">
+            {{if eq .Phase "bidding"}}{{template "bids_partial" .}}
+            {{else if eq .Phase "playing"}}{{template "tricks_partial" .}}
+            {{else if eq .Phase "round_summary"}}{{template "summary_partial" .}}
+            {{else if eq .Phase "game_over"}}{{template "gameover_partial" .}}
+            {{end}}
+        </div>
+    </main>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,33 @@
+{{define "scoreboard_partial"}}
+<div id="scoreboard" class="bg-white rounded-xl shadow-lg p-6">
+    <h2 class="text-xl font-bold text-emerald-800 mb-4">Scorebord</h2>
+    {{if .Scoreboard.Rounds}}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b-2 border-emerald-200">
+                    <th class="text-left py-2 px-2 font-semibold text-gray-700 sticky left-0 bg-white z-10 min-w-[100px]">Speler</th>
+                    {{range .Scoreboard.Rounds}}
+                    <th class="text-center py-2 px-2 font-semibold text-gray-600 whitespace-nowrap">R{{.Number}} ({{.CardsPerPlayer}})</th>
+                    {{end}}
+                    <th class="text-center py-2 px-3 font-bold text-emerald-800 border-l-2 border-emerald-200">Totaal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Scoreboard.Rows}}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-2 px-2 font-medium text-gray-800 sticky left-0 bg-white z-10">{{.PlayerName}}</td>
+                    {{range .RoundScores}}
+                    <td class="text-center py-2 px-2 {{if ge . 0}}text-emerald-700{{else}}text-red-600{{end}}">{{.}}</td>
+                    {{end}}
+                    <td class="text-center py-2 px-3 font-bold text-emerald-800 border-l-2 border-emerald-200">{{.Total}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{else}}
+    <p class="text-gray-500 italic">Nog geen rondes gespeeld.</p>
+    {{end}}
+</div>
+{{end}}

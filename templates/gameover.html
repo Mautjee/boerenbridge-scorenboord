@@ -1,0 +1,42 @@
+{{define "gameover_partial"}}
+<div class="bg-white rounded-xl shadow-lg p-6">
+    <div class="text-center mb-6">
+        <div class="text-6xl mb-4">🏆</div>
+        <h2 class="text-3xl font-bold text-emerald-800">Spel afgelopen!</h2>
+    </div>
+
+    <h3 class="text-xl font-bold text-gray-700 mb-3">Eindstand</h3>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead>
+                <tr class="border-b-2 border-emerald-200">
+                    <th class="text-center py-2 px-3 font-semibold text-gray-700 w-16">Positie</th>
+                    <th class="text-left py-2 px-3 font-semibold text-gray-700">Speler</th>
+                    <th class="text-center py-2 px-3 font-semibold text-gray-700">Punten</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{$results := .FinalResults}}
+                {{range $i, $r := $results}}
+                <tr class="border-b border-gray-100 {{if eq $r.Position 1}}bg-amber-50{{end}}">
+                    <td class="text-center py-3 px-3">
+                        {{if eq $r.Position 1}}🥇{{else if eq $r.Position 2}}🥈{{else if eq $r.Position 3}}🥉{{else}}{{$r.Position}}{{end}}
+                    </td>
+                    <td class="py-3 px-3 font-medium text-gray-800 {{if eq $r.Position 1}}text-xl{{end}}">{{.PlayerName}}</td>
+                    <td class="text-center py-3 px-3 font-bold {{if ge .TotalScore 0}}text-emerald-700{{else}}text-red-600{{end}}">
+                        {{.TotalScore}}
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-6 text-center">
+        <a href="/"
+            class="inline-block px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">
+            Nieuw spel starten
+        </a>
+    </div>
+</div>
+{{end}}

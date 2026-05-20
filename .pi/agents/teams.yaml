@@ -1,0 +1,16 @@
+boerenbridge:
+  - scout
+  - planner
+  - builder
+  - reviewer
+
+boerenbridge-full:
+  - scout
+  - planner
+  - builder
+  - reviewer
+  - tester
+
+qa:
+  - tester
+  - red-team

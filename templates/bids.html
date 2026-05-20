@@ -1,0 +1,71 @@
+{{define "bids_partial"}}
+<div class="bg-white rounded-xl shadow-lg p-6">
+    <div class="mb-4">
+        <h2 class="text-2xl font-bold text-emerald-800">Biedingen invoeren</h2>
+        <p class="text-gray-600 mt-1">Ronde {{.CurrentRound}} van {{.TotalRounds}} &mdash; {{.CardsPerRound}} {{if eq .CardsPerRound 1}}kaart{{else}}kaarten{{end}} per speler</p>
+    </div>
+
+    {{if .Error}}
+    <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 font-medium">
+        ⚠️ {{.Error}}
+    </div>
+    {{end}}
+
+    <div class="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+        💡 <strong>Blinde regel:</strong> De biedingen mogen samen niet optellen tot {{.CardsPerRound}}.
+    </div>
+
+    <form hx-post="/game/{{.GameID}}/bids" hx-target="#game-content" hx-swap="innerHTML">
+        <div class="space-y-3">
+            {{range .Players}}
+            <div class="flex items-center gap-3">
+                <label class="w-32 font-medium text-gray-700" for="bid_{{.ID}}">{{.Name}}</label>
+                <input type="number" id="bid_{{.ID}}" name="bid_{{.ID}}" min="0" max="{{$.CardsPerRound}}" value="0"
+                    class="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bid-input"
+                    data-player="{{.ID}}">
+            </div>
+            {{end}}
+        </div>
+
+        <div class="mt-4 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+            <span class="text-gray-600">Totaal biedingen: <strong id="bid-total" class="text-lg">0</strong> / {{.CardsPerRound}}</span>
+            <span id="bid-warning" class="text-red-600 font-semibold hidden">⚠️ Blinde regel!</span>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit"
+                class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">
+                Biedingen bevestigen
+            </button>
+        </div>
+    </form>
+
+    <script>
+        (function() {
+            var cardsPerPlayer = {{.CardsPerRound}};
+            var totalEl = document.getElementById('bid-total');
+            var warningEl = document.getElementById('bid-warning');
+
+            function updateTotal() {
+                var total = 0;
+                document.querySelectorAll('.bid-input').forEach(function(input) {
+                    total += parseInt(input.value) || 0;
+                });
+                totalEl.textContent = total;
+                if (total === cardsPerPlayer) {
+                    warningEl.classList.remove('hidden');
+                    totalEl.classList.add('text-red-600');
+                } else {
+                    warningEl.classList.add('hidden');
+                    totalEl.classList.remove('text-red-600');
+                }
+            }
+
+            document.querySelectorAll('.bid-input').forEach(function(input) {
+                input.addEventListener('input', updateTotal);
+            });
+            updateTotal();
+        })();
+    </script>
+</div>
+{{end}}
