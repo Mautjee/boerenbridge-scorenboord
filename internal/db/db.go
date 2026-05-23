@@ -195,9 +195,9 @@ func SaveTricksAndScores(db *sql.DB, gameID int64, round int, tricks map[int64]i
 			diff = -diff
 		}
 		if bid == trick {
-			score = 10 + 2*bid
+			score = 10 + 3*bid
 		} else {
-			score = -2 * diff
+			score = -3 * diff
 		}
 
 		_, err = db.Exec(

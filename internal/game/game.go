@@ -32,17 +32,17 @@ func CardsForRound(roundNum, numPlayers int) int {
 }
 
 // CalculateScore returns the score for a given bid and tricks won.
-// If bid equals tricks: 10 + 2 * bid
-// If bid doesn't equal tricks: -2 * |bid - tricks|
+// If bid equals tricks: 10 + 3 * bid
+// If bid doesn't equal tricks: -3 * |bid - tricks|
 func CalculateScore(bid, tricksWon int) int {
 	if bid == tricksWon {
-		return 10 + 2*bid
+		return 10 + 3*bid
 	}
 	diff := bid - tricksWon
 	if diff < 0 {
 		diff = -diff
 	}
-	return -2 * diff
+	return -3 * diff
 }
 
 // ValidateBids checks if the bids are valid according to the blind rule.
