@@ -15,8 +15,9 @@
 </head>
 <body class="min-h-screen bg-gradient-to-br from-emerald-50 to-green-100">
     <nav class="bg-emerald-700 text-white shadow-lg">
-        <div class="max-w-4xl mx-auto px-4 py-3">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
             <a href="/" class="text-xl font-bold">🃏 Boerenbridge Scorebord</a>
+            <a href="/" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition">+ Nieuw spel</a>
         </div>
     </nav>
 
@@ -31,6 +32,16 @@
             {{end}}
         </div>
     </main>
+
+    <script>
+        // Persist current game ID in localStorage so refreshing returns to this game
+        (function() {
+            var gameId = "{{.GameID}}";
+            if (gameId && gameId !== "0") {
+                localStorage.setItem('boerenbridge_game_id', gameId);
+            }
+        })();
+    </script>
 </body>
 </html>
 {{end}}

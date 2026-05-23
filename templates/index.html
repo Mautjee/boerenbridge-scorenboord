@@ -66,6 +66,23 @@
     </main>
 
     <script>
+        // If a game is active on this device, offer to resume it
+        (function() {
+            var savedId = localStorage.getItem('boerenbridge_game_id');
+            if (savedId) {
+                var banner = document.createElement('div');
+                banner.className = 'mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between gap-4';
+                banner.innerHTML =
+                    '<span class="text-emerald-800 font-medium">🎮 Je hebt een actief spel (#' + savedId + ')</span>' +
+                    '<div class="flex gap-2">' +
+                    '<a href="/game/' + savedId + '" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-sm transition">Hervatten</a>' +
+                    '<button onclick="localStorage.removeItem(\'boerenbridge_game_id\');this.closest(\'div.mb-6\').remove()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition">Negeren</button>' +
+                    '</div>';
+                var form = document.getElementById('player-form').closest('.bg-white');
+                form.parentNode.insertBefore(banner, form);
+            }
+        })();
+
         const addBtn = document.getElementById('add-player-btn');
         const inputs = document.getElementById('player-inputs');
         let playerCount = 2;

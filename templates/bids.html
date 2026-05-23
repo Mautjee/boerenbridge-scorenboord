@@ -18,11 +18,26 @@
     <form hx-post="/game/{{.GameID}}/bids" hx-target="#game-content" hx-swap="innerHTML">
         <div class="space-y-3">
             {{range .Players}}
-            <div class="flex items-center gap-3">
-                <label class="w-32 font-medium text-gray-700" for="bid_{{.ID}}">{{.Name}}</label>
-                <input type="number" id="bid_{{.ID}}" name="bid_{{.ID}}" min="0" max="{{$.CardsPerRound}}" value="0"
-                    class="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bid-input"
-                    data-player="{{.ID}}">
+            <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-2 w-44 min-w-0">
+                    <label class="font-medium text-gray-700 truncate" for="bid_{{.ID}}">{{.Name}}</label>
+                    {{if eq .ID $.DealerID}}
+                    <span class="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-semibold whitespace-nowrap">🃏 Deler</span>
+                    {{else if eq .ID $.FirstBidderID}}
+                    <span class="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full font-semibold whitespace-nowrap">🎯 1e bod</span>
+                    {{end}}
+                </div>
+                <div class="flex items-center gap-1">
+                    <button type="button" onclick="adjustBid('bid_{{.ID}}', -1)"
+                        class="w-9 h-9 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-lg transition">−</button>
+                    <input type="number" id="bid_{{.ID}}" name="bid_{{.ID}}" min="0" max="{{$.CardsPerRound}}" value="0"
+                        class="w-14 px-2 py-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bid-input"
+                        data-player="{{.ID}}">
+                    <button type="button" onclick="adjustBid('bid_{{.ID}}', 1)"
+                        class="w-9 h-9 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-lg transition">+</button>
+                    <button type="button" onclick="adjustBid('bid_{{.ID}}', 2)"
+                        class="px-2 h-9 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-sm border border-emerald-200 transition">+2</button>
+                </div>
             </div>
             {{end}}
         </div>
@@ -45,6 +60,14 @@
             var cardsPerPlayer = {{.CardsPerRound}};
             var totalEl = document.getElementById('bid-total');
             var warningEl = document.getElementById('bid-warning');
+
+            window.adjustBid = function(inputId, delta) {
+                var input = document.getElementById(inputId);
+                var val = parseInt(input.value) || 0;
+                val = Math.max(0, Math.min(cardsPerPlayer, val + delta));
+                input.value = val;
+                updateTotal();
+            };
 
             function updateTotal() {
                 var total = 0;

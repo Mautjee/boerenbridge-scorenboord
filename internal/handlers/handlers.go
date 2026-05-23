@@ -50,6 +50,8 @@ type GamePageData struct {
 	Scoreboard    ScoreboardData
 	Error         string
 	IsLastRound   bool
+	DealerID      int64
+	FirstBidderID int64
 }
 
 type ScoreboardData struct {
@@ -341,6 +343,16 @@ func (h *Handler) buildGamePageData(gameID int64, errMsg string) (*GamePageData,
 		isLastRound = true
 	}
 
+	// Dealer rotates each round: round 1 = players[0], round 2 = players[1], etc.
+	// First bidder (who opens the betting) = the player after the dealer.
+	var dealerID, firstBidderID int64
+	if len(players) > 0 {
+		dealerIdx := (g.CurrentRound - 1) % len(players)
+		firstBidderIdx := (dealerIdx + 1) % len(players)
+		dealerID = players[dealerIdx].ID
+		firstBidderID = players[firstBidderIdx].ID
+	}
+
 	data := &GamePageData{
 		GameID:        gameID,
 		CurrentRound:  g.CurrentRound,
@@ -350,6 +362,8 @@ func (h *Handler) buildGamePageData(gameID int64, errMsg string) (*GamePageData,
 		Players:       players,
 		Error:         errMsg,
 		IsLastRound:   isLastRound,
+		DealerID:      dealerID,
+		FirstBidderID: firstBidderID,
 	}
 
 	// Load bids if in playing or later phase
@@ -435,6 +449,11 @@ func (h *Handler) buildScoreboard(gameID int64, g *db.Game, players []db.Player)
 			}
 		}
 	}
+
+	// Sort rows: highest total first, lowest at bottom
+	sort.Slice(sd.Rows, func(i, j int) bool {
+		return sd.Rows[i].Total > sd.Rows[j].Total
+	})
 
 	return sd, nil
 }

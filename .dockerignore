@@ -4,3 +4,7 @@
 README.md
 AGENTS.md
 PROMPT.md
+build.sh
+data/
+boerenbridge
+server
