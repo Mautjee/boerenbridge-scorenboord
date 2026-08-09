@@ -413,6 +413,62 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	render(w, "game_page", data)
 }
 
+func (h *Handler) PlayerRow(w http.ResponseWriter, r *http.Request) {
+	indexStr := r.URL.Query().Get("index")
+	totalStr := r.URL.Query().Get("total")
+	direction := r.URL.Query().Get("direction")
+	if direction == "" {
+		direction = "up_down"
+	}
+
+	index, err := strconv.Atoi(indexStr)
+	if err != nil || index < 1 || index > 8 {
+		http.Error(w, "Ongeldige index", http.StatusBadRequest)
+		return
+	}
+
+	total, err := strconv.Atoi(totalStr)
+	if err != nil || total < 2 || total > 8 {
+		http.Error(w, "Ongeldig totaal", http.StatusBadRequest)
+		return
+	}
+
+	maxCards := 52 / total
+	maxRounds := maxCards
+	if direction == "up_down" {
+		maxRounds = 2*maxCards - 1
+	}
+
+	data := map[string]any{
+		"Index":       index,
+		"IndexMinus1": index - 1,
+		"MaxRounds":   maxRounds,
+	}
+	render(w, "player_row_with_rounds", data)
+}
+
+func (h *Handler) RoundsCount(w http.ResponseWriter, r *http.Request) {
+	totalStr := r.URL.Query().Get("total")
+	direction := r.URL.Query().Get("direction")
+	if direction == "" {
+		direction = "up_down"
+	}
+
+	total, err := strconv.Atoi(totalStr)
+	if err != nil || total < 2 || total > 8 {
+		http.Error(w, "Ongeldig totaal", http.StatusBadRequest)
+		return
+	}
+
+	maxCards := 52 / total
+	maxRounds := maxCards
+	if direction == "up_down" {
+		maxRounds = 2*maxCards - 1
+	}
+
+	render(w, "rounds_oob", map[string]any{"MaxRounds": maxRounds})
+}
+
 func (h *Handler) buildGamePageData(gameID int64, errMsg string) (*GamePageData, error) {
 	g, err := db.GetGame(h.db, gameID)
 	if err != nil {

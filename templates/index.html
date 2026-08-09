@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boerenbridge Scorebord</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <style type="text/tailwindcss">
         @layer base {
             body { @apply bg-gray-50; }
@@ -26,13 +27,13 @@
 
             <form id="player-form" method="POST" action="/game">
                 <div id="player-inputs" class="space-y-3 mb-6">
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 player-row">
                         <span class="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm">1</span>
                         <input type="text" name="player_0" required
                             class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                             placeholder="Naam speler 1">
                     </div>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 player-row">
                         <span class="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm">2</span>
                         <input type="text" name="player_1" required
                             class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
@@ -41,6 +42,11 @@
                 </div>
 
                 <button type="button" id="add-player-btn"
+                    hx-get="/player-row"
+                    hx-target="#player-inputs"
+                    hx-swap="beforeend"
+                    hx-include="[name='direction']:checked"
+                    hx-vals='js:{index: (document.querySelectorAll("#player-inputs .player-row").length + 1), total: (document.querySelectorAll("#player-inputs .player-row").length + 1)}'
                     class="mb-6 px-4 py-2 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition">
                     + Speler toevoegen
                 </button>
@@ -54,11 +60,13 @@
                         <label class="block text-sm font-medium text-gray-600 mb-2">Richting</label>
                         <div class="flex gap-3">
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="direction" value="up_down" checked class="accent-emerald-600">
+                                <input type="radio" name="direction" value="up_down" checked class="accent-emerald-600"
+                                    onchange="refreshRounds()">
                                 <span class="text-gray-700">↕️ Omhoog en omlaag (piramide)</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="direction" value="up_only" class="accent-emerald-600">
+                                <input type="radio" name="direction" value="up_only" class="accent-emerald-600"
+                                    onchange="refreshRounds()">
                                 <span class="text-gray-700">⬆️ Alleen omhoog</span>
                             </label>
                         </div>
@@ -67,8 +75,11 @@
                     <!-- Rounds input -->
                     <div>
                         <label for="total_rounds" class="block text-sm font-medium text-gray-600 mb-1">Aantal rondes</label>
-                        <input type="number" id="total_rounds" name="total_rounds" min="1"
-                            class="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="total_rounds" name="total_rounds" min="1" value="51"
+                                class="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                            <span id="rounds-max-hint" class="text-xs text-gray-400">max: 51</span>
+                        </div>
                         <p class="text-xs text-gray-400 mt-1">Standaard is het volledige spel. Verlaag om minder rondes te spelen.</p>
                     </div>
                 </div>
@@ -111,90 +122,35 @@
             }
         })();
 
-        // --- Player management & rounds calculation ---
-        (function() {
-            var inputsContainer = document.getElementById('player-inputs');
-            var addBtn = document.getElementById('add-player-btn');
-            var directionRadios = document.querySelectorAll('input[name="direction"]');
-            var roundsInput = document.getElementById('total_rounds');
-
-            function getPlayerCount() {
-                return inputsContainer.querySelectorAll('input[type="text"]').length;
+        // Recalculate max rounds based on player count and direction
+        function refreshRounds() {
+            var count = document.querySelectorAll('#player-inputs .player-row').length;
+            if (count < 2) return;
+            var direction = document.querySelector('input[name="direction"]:checked').value;
+            var maxCards = Math.floor(52 / count);
+            var max = direction === 'up_only' ? maxCards : 2 * maxCards - 1;
+            var input = document.getElementById('total_rounds');
+            input.max = max;
+            document.getElementById('rounds-max-hint').textContent = 'max: ' + max;
+            if (!input.dataset.userEdited || parseInt(input.value) > max) {
+                input.value = max;
             }
+        }
 
-            function getDirection() {
-                var checked = document.querySelector('input[name="direction"]:checked');
-                return checked ? checked.value : 'up_down';
+        // After HTMX adds a row, refresh rounds
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            if (evt.detail.target && evt.detail.target.id === 'player-inputs') {
+                refreshRounds();
             }
+        });
 
-            function maxRounds(players, direction) {
-                var maxCards = Math.floor(52 / players);
-                if (direction === 'up_only') return maxCards;
-                return 2 * maxCards - 1;
-            }
+        // Mark manual edits so we don't overwrite user's choice
+        document.getElementById('total_rounds').addEventListener('input', function() {
+            this.dataset.userEdited = '1';
+        });
 
-            function updateRoundsDefault() {
-                var players = getPlayerCount();
-                if (players < 2) return;
-                var max = maxRounds(players, getDirection());
-                roundsInput.max = max;
-                if (!roundsInput.dataset.userEdited || parseInt(roundsInput.value) > max) {
-                    roundsInput.value = max;
-                    roundsInput.dataset.userEdited = '';
-                }
-            }
-
-            // Mark user-edited so we don't overwrite their choice
-            roundsInput.addEventListener('input', function() {
-                roundsInput.dataset.userEdited = '1';
-            });
-
-            // Recalculate when direction changes
-            directionRadios.forEach(function(radio) {
-                radio.addEventListener('change', updateRoundsDefault);
-            });
-
-            // Add player button
-            addBtn.addEventListener('click', function() {
-                var count = getPlayerCount();
-                if (count >= 8) {
-                    alert('Maximaal 8 spelers toegestaan.');
-                    return;
-                }
-
-                var div = document.createElement('div');
-                div.className = 'flex items-center gap-3';
-                div.innerHTML =
-                    '<span class="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm">' + (count + 1) + '</span>' +
-                    '<input type="text" name="player_' + count + '" required' +
-                    ' class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"' +
-                    ' placeholder="Naam speler ' + (count + 1) + '">' +
-                    '<button type="button" class="remove-player px-2 py-1 text-red-500 hover:text-red-700 text-xl">&times;</button>';
-                inputsContainer.appendChild(div);
-
-                // Remove handler
-                div.querySelector('.remove-player').addEventListener('click', function() {
-                    div.remove();
-                    renumberAllPlayers();
-                    updateRoundsDefault();
-                });
-
-                updateRoundsDefault();
-            });
-
-            function renumberAllPlayers() {
-                var allInputs = inputsContainer.querySelectorAll('input[type="text"]');
-                allInputs.forEach(function(input, i) {
-                    input.name = 'player_' + i;
-                    input.placeholder = 'Naam speler ' + (i + 1);
-                    var badge = input.parentElement.querySelector('span');
-                    if (badge) badge.textContent = i + 1;
-                });
-            }
-
-            // Initial calculation
-            updateRoundsDefault();
-        })();
+        // Initial calculation
+        refreshRounds();
     </script>
 </body>
 </html>
