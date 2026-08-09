@@ -46,6 +46,7 @@ func main() {
 	mux.HandleFunc("POST /game/{id}/bids", h.SubmitBids)
 	mux.HandleFunc("POST /game/{id}/tricks", h.SubmitTricks)
 	mux.HandleFunc("POST /game/{id}/next", h.NextRound)
+	mux.HandleFunc("POST /game/{id}/settings", h.UpdateSettings)
 
 	addr := ":8080"
 	fmt.Printf("🃏 Boerenbridge Scorebord draait op http://localhost%s\n", addr)

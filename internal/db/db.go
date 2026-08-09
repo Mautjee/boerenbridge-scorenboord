@@ -14,6 +14,8 @@ type Game struct {
 	CurrentRound int
 	Phase        string // "bidding", "playing", "round_summary", "game_over"
 	NumPlayers   int
+	Direction    string // "up_down" or "up_only"
+	TotalRounds  int    // configured max rounds (0 = all natural rounds)
 	CreatedAt    string
 }
 
@@ -56,15 +58,21 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to create tables: %w", err)
 	}
 
+	// Auto-migrate: add columns if missing (v2 schema)
+	db.Exec("ALTER TABLE games ADD COLUMN direction TEXT NOT NULL DEFAULT 'up_down'")
+	db.Exec("ALTER TABLE games ADD COLUMN total_rounds INTEGER NOT NULL DEFAULT 0")
+
 	return db, nil
 }
 
 func createTables(db *sql.DB) error {
 	schema := `
-	CREATE TABLE IF NOT EXISTS games (
+		CREATE TABLE IF NOT EXISTS games (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		current_round INTEGER NOT NULL DEFAULT 1,
 		phase TEXT NOT NULL DEFAULT 'bidding',
+		direction TEXT NOT NULL DEFAULT 'up_down',
+		total_rounds INTEGER NOT NULL DEFAULT 0,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
@@ -93,14 +101,15 @@ func createTables(db *sql.DB) error {
 	return err
 }
 
-func CreateGame(db *sql.DB, playerNames []string) (int64, error) {
+func CreateGame(db *sql.DB, playerNames []string, direction string, totalRounds int) (int64, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback()
 
-	result, err := tx.Exec("INSERT INTO games (current_round, phase) VALUES (1, 'bidding')")
+	result, err := tx.Exec("INSERT INTO games (current_round, phase, direction, total_rounds) VALUES (1, 'bidding', ?, ?)",
+		direction, totalRounds)
 	if err != nil {
 		return 0, err
 	}
@@ -125,8 +134,9 @@ func CreateGame(db *sql.DB, playerNames []string) (int64, error) {
 
 func GetGame(db *sql.DB, gameID int64) (*Game, error) {
 	g := &Game{}
-	err := db.QueryRow("SELECT id, current_round, phase, created_at FROM games WHERE id = ?", gameID).
-		Scan(&g.ID, &g.CurrentRound, &g.Phase, &g.CreatedAt)
+	err := db.QueryRow(
+		"SELECT id, current_round, phase, direction, total_rounds, created_at FROM games WHERE id = ?", gameID,
+	).Scan(&g.ID, &g.CurrentRound, &g.Phase, &g.Direction, &g.TotalRounds, &g.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -281,4 +291,9 @@ func GetAllResults(db *sql.DB, gameID int64) ([]RoundResult, error) {
 		results = append(results, r)
 	}
 	return results, nil
+}
+
+func UpdateGameSettings(db *sql.DB, gameID int64, totalRounds int) error {
+	_, err := db.Exec("UPDATE games SET total_rounds = ? WHERE id = ?", totalRounds, gameID)
+	return err
 }

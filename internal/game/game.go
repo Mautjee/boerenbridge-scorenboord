@@ -2,29 +2,43 @@ package game
 
 import "fmt"
 
-// RoundSequence returns the number of cards per player for each round
-// following the pyramid pattern: 1,2,3,...,max,...,3,2,1
-func RoundSequence(numPlayers int) []int {
+// RoundSequence returns the number of cards per player for each round.
+// direction: "up_down" (pyramid: 1,2,...,max,...,2,1) or "up_only" (1,2,...,max).
+// maxRounds: 0 = all rounds, >0 = cap to that many rounds.
+func RoundSequence(numPlayers int, direction string, maxRounds int) []int {
 	maxCards := 52 / numPlayers
 	var seq []int
-	for i := 1; i <= maxCards; i++ {
-		seq = append(seq, i)
+
+	if direction == "up_only" {
+		for i := 1; i <= maxCards; i++ {
+			seq = append(seq, i)
+		}
+	} else {
+		// up_down (default): pyramid pattern
+		for i := 1; i <= maxCards; i++ {
+			seq = append(seq, i)
+		}
+		for i := maxCards - 1; i >= 1; i-- {
+			seq = append(seq, i)
+		}
 	}
-	for i := maxCards - 1; i >= 1; i-- {
-		seq = append(seq, i)
+
+	// Cap to maxRounds if set
+	if maxRounds > 0 && maxRounds < len(seq) {
+		seq = seq[:maxRounds]
 	}
 	return seq
 }
 
 // TotalRounds returns the total number of rounds for a game.
-func TotalRounds(numPlayers int) int {
-	return len(RoundSequence(numPlayers))
+func TotalRounds(numPlayers int, direction string, maxRounds int) int {
+	return len(RoundSequence(numPlayers, direction, maxRounds))
 }
 
 // CardsForRound returns the number of cards per player for a given round.
 // Round numbers are 1-indexed.
-func CardsForRound(roundNum, numPlayers int) int {
-	seq := RoundSequence(numPlayers)
+func CardsForRound(roundNum, numPlayers int, direction string, maxRounds int) int {
+	seq := RoundSequence(numPlayers, direction, maxRounds)
 	if roundNum < 1 || roundNum > len(seq) {
 		return 0
 	}

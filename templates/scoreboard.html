@@ -1,33 +1,128 @@
 {{define "scoreboard_partial"}}
 <div id="scoreboard" class="bg-white rounded-xl shadow-lg p-6">
-    <h2 class="text-xl font-bold text-emerald-800 mb-4">Scorebord</h2>
-    {{if .Scoreboard.Rounds}}
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="border-b-2 border-emerald-200">
-                    <th class="text-left py-2 px-2 font-semibold text-gray-700 sticky left-0 bg-white z-10 min-w-[100px]">Speler</th>
-                    {{range .Scoreboard.Rounds}}
-                    <th class="text-center py-2 px-2 font-semibold text-gray-600 whitespace-nowrap">R{{.Number}} ({{.CardsPerPlayer}})</th>
-                    {{end}}
-                    <th class="text-center py-2 px-3 font-bold text-emerald-800 border-l-2 border-emerald-200">Totaal</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{range .Scoreboard.Rows}}
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                    <td class="py-2 px-2 font-medium text-gray-800 sticky left-0 bg-white z-10">{{.PlayerName}}</td>
-                    {{range .RoundScores}}
-                    <td class="text-center py-2 px-2 {{if ge . 0}}text-emerald-700{{else}}text-red-600{{end}}">{{.}}</td>
-                    {{end}}
-                    <td class="text-center py-2 px-3 font-bold text-emerald-800 border-l-2 border-emerald-200">{{.Total}}</td>
-                </tr>
-                {{end}}
-            </tbody>
-        </table>
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold text-emerald-800">Scorebord</h2>
+        {{if .Scoreboard.Rounds}}
+        <button id="scoreboard-toggle" onclick="toggleScoreboard()"
+            class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">
+            📊 Grafiek
+        </button>
+        {{end}}
     </div>
-    {{else}}
-    <p class="text-gray-500 italic">Nog geen rondes gespeeld.</p>
+
+    <!-- Table view -->
+    <div id="scoreboard-table">
+        {{if .Scoreboard.Rounds}}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b-2 border-emerald-200">
+                        <th class="text-left py-2 px-2 font-semibold text-gray-700 sticky left-0 bg-white z-10 min-w-[100px]">Speler</th>
+                        {{range .Scoreboard.Rounds}}
+                        <th class="text-center py-2 px-2 font-semibold text-gray-600 whitespace-nowrap">R{{.Number}} ({{.CardsPerPlayer}})</th>
+                        {{end}}
+                        <th class="text-center py-2 px-3 font-bold text-emerald-800 border-l-2 border-emerald-200">Totaal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Scoreboard.Rows}}
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="py-2 px-2 font-medium text-gray-800 sticky left-0 bg-white z-10">{{.PlayerName}}</td>
+                        {{range .RoundScores}}
+                        <td class="text-center py-2 px-2 {{if ge . 0}}text-emerald-700{{else}}text-red-600{{end}}">{{.}}</td>
+                        {{end}}
+                        <td class="text-center py-2 px-3 font-bold text-emerald-800 border-l-2 border-emerald-200">{{.Total}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <p class="text-gray-500 italic">Nog geen rondes gespeeld.</p>
+        {{end}}
+    </div>
+
+    <!-- Graph view (hidden by default) -->
+    {{if .Scoreboard.Rounds}}
+    <div id="scoreboard-graph" class="hidden" style="height: 350px;">
+        <canvas id="scoreChart"></canvas>
+    </div>
     {{end}}
 </div>
+
+{{if .Scoreboard.Rounds}}
+<script>
+(function() {
+    var showingTable = true;
+    var toggleBtn = document.getElementById('scoreboard-toggle');
+    var tableEl = document.getElementById('scoreboard-table');
+    var graphEl = document.getElementById('scoreboard-graph');
+    var chart = null;
+
+    window.toggleScoreboard = function() {
+        showingTable = !showingTable;
+        if (showingTable) {
+            tableEl.classList.remove('hidden');
+            graphEl.classList.add('hidden');
+            toggleBtn.textContent = '📊 Grafiek';
+        } else {
+            tableEl.classList.add('hidden');
+            graphEl.classList.remove('hidden');
+            toggleBtn.textContent = '📋 Tabel';
+            drawChart();
+        }
+    };
+
+    function drawChart() {
+        if (chart) { chart.destroy(); }
+        var canvas = document.getElementById('scoreChart');
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+
+        var labels = [];
+        {{range .Scoreboard.Rounds}}
+        labels.push('R{{.Number}}');
+        {{end}}
+
+        var colors = ['#047857', '#b91c1c', '#1d4ed8', '#7c3aed', '#b45309', '#0e7490', '#a21caf', '#4d7c0f'];
+        var datasets = [];
+        {{range $i, $row := .Scoreboard.Rows}}
+        datasets.push({
+            label: '{{$row.PlayerName}}',
+            data: [{{range $row.CumulativeScores}}{{.}},{{end}}],
+            borderColor: colors[{{$i}} % colors.length],
+            backgroundColor: colors[{{$i}} % colors.length] + '20',
+            borderWidth: 2,
+            tension: 0.2,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+        });
+        {{end}}
+
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets,
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                },
+                scales: {
+                    y: {
+                        title: { display: true, text: 'Cumulatieve punten' },
+                    },
+                    x: {
+                        title: { display: true, text: 'Ronde' },
+                    },
+                },
+            },
+        });
+    }
+})();
+</script>
+{{end}}
 {{end}}

@@ -45,6 +45,34 @@
                     + Speler toevoegen
                 </button>
 
+                <!-- Game Settings -->
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg space-y-4">
+                    <h3 class="font-semibold text-gray-700">Spelinstellingen</h3>
+
+                    <!-- Direction toggle -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-2">Richting</label>
+                        <div class="flex gap-3">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="direction" value="up_down" checked class="accent-emerald-600">
+                                <span class="text-gray-700">↕️ Omhoog en omlaag (piramide)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="direction" value="up_only" class="accent-emerald-600">
+                                <span class="text-gray-700">⬆️ Alleen omhoog</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Rounds input -->
+                    <div>
+                        <label for="total_rounds" class="block text-sm font-medium text-gray-600 mb-1">Aantal rondes</label>
+                        <input type="number" id="total_rounds" name="total_rounds" min="1"
+                            class="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        <p class="text-xs text-gray-400 mt-1">Standaard is het volledige spel. Verlaag om minder rondes te spelen.</p>
+                    </div>
+                </div>
+
                 <div class="flex items-center gap-4">
                     <button type="submit"
                         class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">
@@ -83,9 +111,9 @@
             }
         })();
 
-        const addBtn = document.getElementById('add-player-btn');
-        const inputs = document.getElementById('player-inputs');
-        let playerCount = 2;
+        var addBtn = document.getElementById('add-player-btn');
+        var inputs = document.getElementById('player-inputs');
+        var playerCount = 2;
 
         addBtn.addEventListener('click', function() {
             playerCount++;
@@ -93,7 +121,7 @@
                 alert('Maximaal 8 spelers toegestaan.');
                 return;
             }
-            const div = document.createElement('div');
+            var div = document.createElement('div');
             div.className = 'flex items-center gap-3';
             div.innerHTML = `
                 <span class="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm">${playerCount}</span>
@@ -106,8 +134,74 @@
 
             div.querySelector('.remove-player').addEventListener('click', function() {
                 div.remove();
+                // Re-number remaining players
+                renumberPlayers();
             });
         });
+
+        function renumberPlayers() {
+            var allInputs = document.querySelectorAll('#player-inputs input[type="text"]');
+            playerCount = allInputs.length;
+            allInputs.forEach(function(input, i) {
+                input.name = 'player_' + i;
+                input.placeholder = 'Naam speler ' + (i + 1);
+                var badge = input.parentElement.querySelector('span');
+                if (badge) badge.textContent = i + 1;
+            });
+        }
+
+        // --- Auto-calculate max rounds based on player count and direction ---
+        (function() {
+            var directionRadios = document.querySelectorAll('input[name="direction"]');
+            var roundsInput = document.getElementById('total_rounds');
+
+            function getPlayerCount() {
+                return document.querySelectorAll('#player-inputs input[type="text"]').length;
+            }
+
+            function getDirection() {
+                var checked = document.querySelector('input[name="direction"]:checked');
+                return checked ? checked.value : 'up_down';
+            }
+
+            function maxRounds(players, direction) {
+                var maxCards = Math.floor(52 / players);
+                if (direction === 'up_only') return maxCards;
+                return 2 * maxCards - 1; // pyramid
+            }
+
+            function updateRoundsDefault() {
+                var players = getPlayerCount();
+                if (players < 2) return;
+                var max = maxRounds(players, getDirection());
+                roundsInput.max = max;
+                // Only update value if user hasn't manually changed it, or if new max < current value
+                if (!roundsInput.dataset.userEdited || parseInt(roundsInput.value) > max) {
+                    roundsInput.value = max;
+                    roundsInput.dataset.userEdited = '';
+                }
+            }
+
+            // Recalculate when direction changes
+            directionRadios.forEach(function(radio) {
+                radio.addEventListener('change', updateRoundsDefault);
+            });
+
+            // Recalculate when players are added/removed
+            var observer = new MutationObserver(function() {
+                renumberPlayers();
+                updateRoundsDefault();
+            });
+            observer.observe(document.getElementById('player-inputs'), { childList: true, subtree: true });
+
+            // Mark user-edited so we don't overwrite their choice
+            roundsInput.addEventListener('input', function() {
+                roundsInput.dataset.userEdited = '1';
+            });
+
+            // Initial calculation
+            updateRoundsDefault();
+        })();
     </script>
 </body>
 </html>
