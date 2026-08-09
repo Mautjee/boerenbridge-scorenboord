@@ -42,10 +42,13 @@
                     </div>
                     <div class="flex items-end gap-3">
                         <div>
-                            <label for="settings-rounds" class="block text-sm font-medium text-gray-600 mb-1">Aantal rondes</label>
-                            <input type="number" id="settings-rounds" name="total_rounds" min="{{.CurrentRound}}" max="{{.TotalRounds}}" value="{{.MaxRounds}}"
+                            <label for="settings-maxcards" class="block text-sm font-medium text-gray-600 mb-1">Max kaarten per speler</label>
+                            <input type="number" id="settings-maxcards" name="max_cards" value="{{.MaxCards}}"
                                 class="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
-                            <p class="text-xs text-gray-400 mt-1">Min: {{.CurrentRound}}, max: {{.TotalRounds}}</p>
+                            <p class="text-xs text-gray-400 mt-1">
+                                → {{.TotalRounds}} rondes
+                                {{if gt .RoundsLeft 0}}&nbsp;·&nbsp;<strong>{{.RoundsLeft}}</strong> nog te spelen{{end}}
+                            </p>
                         </div>
                         <button type="submit"
                             class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-sm transition">
@@ -69,7 +72,6 @@
     </main>
 
     <script>
-        // Persist current game ID in localStorage so refreshing returns to this game
         (function() {
             var gameId = "{{.GameID}}";
             if (gameId && gameId !== "0") {

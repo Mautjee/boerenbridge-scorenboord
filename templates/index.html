@@ -61,26 +61,26 @@
                         <div class="flex gap-3">
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="radio" name="direction" value="up_down" checked class="accent-emerald-600"
-                                    onchange="refreshRounds()">
+                                    onchange="refreshSettings()">
                                 <span class="text-gray-700">↕️ Omhoog en omlaag (piramide)</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="radio" name="direction" value="up_only" class="accent-emerald-600"
-                                    onchange="refreshRounds()">
+                                    onchange="refreshSettings()">
                                 <span class="text-gray-700">⬆️ Alleen omhoog</span>
                             </label>
                         </div>
                     </div>
 
-                    <!-- Rounds input -->
+                    <!-- Max cards input -->
                     <div>
-                        <label for="total_rounds" class="block text-sm font-medium text-gray-600 mb-1">Aantal rondes</label>
+                        <label for="max_cards" class="block text-sm font-medium text-gray-600 mb-1">Max kaarten per speler</label>
                         <div class="flex items-center gap-2">
-                            <input type="number" id="total_rounds" name="total_rounds" min="1" value="51"
-                                class="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
-                            <span id="rounds-max-hint" class="text-xs text-gray-400">max: 51</span>
+                            <input type="number" id="max_cards" name="max_cards" min="1" value="26"
+                                class="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                            <span id="rounds-hint" class="text-xs text-gray-400">→ 51 rondes</span>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1">Standaard is het volledige spel. Verlaag om minder rondes te spelen.</p>
+                        <p class="text-xs text-gray-400 mt-1">Maximale kaarten per speler in een ronde. Dit bepaalt het aantal rondes.</p>
                     </div>
                 </div>
 
@@ -105,7 +105,7 @@
     </main>
 
     <script>
-        // If a game is active on this device, offer to resume it
+        // Resume game banner
         (function() {
             var savedId = localStorage.getItem('boerenbridge_game_id');
             if (savedId) {
@@ -122,35 +122,36 @@
             }
         })();
 
-        // Recalculate max rounds based on player count and direction
-        function refreshRounds() {
+        // Recalculate max cards hint and rounds based on player count and direction
+        function refreshSettings() {
             var count = document.querySelectorAll('#player-inputs .player-row').length;
             if (count < 2) return;
             var direction = document.querySelector('input[name="direction"]:checked').value;
-            var maxCards = Math.floor(52 / count);
-            var max = direction === 'up_only' ? maxCards : 2 * maxCards - 1;
-            var input = document.getElementById('total_rounds');
-            input.max = max;
-            document.getElementById('rounds-max-hint').textContent = 'max: ' + max;
-            if (!input.dataset.userEdited || parseInt(input.value) > max) {
-                input.value = max;
+            var naturalMax = Math.floor(52 / count);
+            var rounds = direction === 'up_only' ? naturalMax : 2 * naturalMax - 1;
+
+            var input = document.getElementById('max_cards');
+            input.max = naturalMax;
+            if (!input.dataset.userEdited || parseInt(input.value) > naturalMax) {
+                input.value = naturalMax;
             }
+            document.getElementById('rounds-hint').textContent = '→ ' + rounds + ' rondes';
         }
 
-        // After HTMX adds a row, refresh rounds
+        // After HTMX adds a row, refresh
         document.body.addEventListener('htmx:afterRequest', function(evt) {
             if (evt.detail.target && evt.detail.target.id === 'player-inputs') {
-                refreshRounds();
+                refreshSettings();
             }
         });
 
         // Mark manual edits so we don't overwrite user's choice
-        document.getElementById('total_rounds').addEventListener('input', function() {
+        document.getElementById('max_cards').addEventListener('input', function() {
             this.dataset.userEdited = '1';
         });
 
         // Initial calculation
-        refreshRounds();
+        refreshSettings();
     </script>
 </body>
 </html>

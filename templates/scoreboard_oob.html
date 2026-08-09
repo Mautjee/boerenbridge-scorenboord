@@ -11,7 +11,6 @@
             {{end}}
         </div>
 
-        <!-- Table view -->
         <div id="scoreboard-table">
             {{if .Scoreboard.Rounds}}
             <div class="overflow-x-auto">
@@ -43,7 +42,6 @@
             {{end}}
         </div>
 
-        <!-- Graph view (hidden by default) -->
         {{if .Scoreboard.Rounds}}
         <div id="scoreboard-graph" class="hidden" style="height: 350px;">
             <canvas id="scoreChart"></canvas>
@@ -61,16 +59,27 @@
     var graphEl = document.getElementById('scoreboard-graph');
     var chart = null;
 
+    var savedView = localStorage.getItem('boerenbridge_scoreboard_view');
+    if (savedView === 'graph') {
+        showingTable = false;
+        tableEl.classList.add('hidden');
+        graphEl.classList.remove('hidden');
+        toggleBtn.textContent = '📋 Tabel';
+        setTimeout(drawChart, 50);
+    }
+
     window.toggleScoreboard = function() {
         showingTable = !showingTable;
         if (showingTable) {
             tableEl.classList.remove('hidden');
             graphEl.classList.add('hidden');
             toggleBtn.textContent = '📊 Grafiek';
+            localStorage.setItem('boerenbridge_scoreboard_view', 'table');
         } else {
             tableEl.classList.add('hidden');
             graphEl.classList.remove('hidden');
             toggleBtn.textContent = '📋 Tabel';
+            localStorage.setItem('boerenbridge_scoreboard_view', 'graph');
             drawChart();
         }
     };
@@ -103,23 +112,14 @@
 
         chart = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: labels,
-                datasets: datasets,
-            },
+            data: { labels: labels, datasets: datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' },
-                },
+                plugins: { legend: { position: 'bottom' } },
                 scales: {
-                    y: {
-                        title: { display: true, text: 'Cumulatieve punten' },
-                    },
-                    x: {
-                        title: { display: true, text: 'Ronde' },
-                    },
+                    y: { title: { display: true, text: 'Cumulatieve punten' } },
+                    x: { title: { display: true, text: 'Ronde' } },
                 },
             },
         });

@@ -4,13 +4,13 @@
     <input type="text" name="player_{{.IndexMinus1}}" required
         class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
         placeholder="Naam speler {{.Index}}">
-    <button type="button" onclick="this.closest('.player-row').remove();refreshRounds()"
+    <button type="button" onclick="this.closest('.player-row').remove();refreshSettings()"
         class="px-2 py-1 text-red-500 hover:text-red-700 text-xl">&times;</button>
 </div>
 {{end}}
 
 {{define "rounds_oob"}}
-<span id="rounds-value" hx-swap-oob="true">{{.MaxRounds}}</span>
+<span id="rounds-hint" hx-swap-oob="true">→ {{.MaxRounds}} rondes</span>
 {{end}}
 
 {{define "player_row_with_rounds"}}

@@ -6,7 +6,7 @@ func TestRoundSequence(t *testing.T) {
 	tests := []struct {
 		numPlayers int
 		direction  string
-		maxRounds  int
+		maxCards   int
 		total      int
 		first      int
 		peak       int
@@ -20,9 +20,9 @@ func TestRoundSequence(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		seq := RoundSequence(tt.numPlayers, tt.direction, tt.maxRounds)
+		seq := RoundSequence(tt.numPlayers, tt.direction, tt.maxCards)
 		if len(seq) != tt.total {
-			t.Errorf("RoundSequence(%d, %s, %d): got length %d, want %d", tt.numPlayers, tt.direction, tt.maxRounds, len(seq), tt.total)
+			t.Errorf("RoundSequence(%d, %s, %d): got length %d, want %d", tt.numPlayers, tt.direction, tt.maxCards, len(seq), tt.total)
 		}
 		if seq[0] != tt.first {
 			t.Errorf("RoundSequence(%d)[0]: got %d, want %d", tt.numPlayers, seq[0], tt.first)
@@ -33,7 +33,6 @@ func TestRoundSequence(t *testing.T) {
 		if seq[len(seq)-1] != tt.last {
 			t.Errorf("RoundSequence(%d) last: got %d, want %d", tt.numPlayers, seq[len(seq)-1], tt.last)
 		}
-		// Verify ascending then descending
 		ascending := true
 		for i := 1; i < len(seq); i++ {
 			if ascending {
@@ -51,7 +50,6 @@ func TestRoundSequence(t *testing.T) {
 
 func TestRoundSequenceUpOnly(t *testing.T) {
 	seq := RoundSequence(4, "up_only", 0)
-	// 4 players: max 13 cards, up_only = 13 rounds: 1..13
 	if len(seq) != 13 {
 		t.Errorf("up_only 4p: got length %d, want 13", len(seq))
 	}
@@ -61,7 +59,6 @@ func TestRoundSequenceUpOnly(t *testing.T) {
 	if seq[len(seq)-1] != 13 {
 		t.Errorf("last: got %d, want 13", seq[len(seq)-1])
 	}
-	// Verify strictly ascending
 	for i := 1; i < len(seq); i++ {
 		if seq[i] != seq[i-1]+1 {
 			t.Errorf("up_only: not ascending at index %d: %d -> %d", i, seq[i-1], seq[i])
@@ -69,30 +66,33 @@ func TestRoundSequenceUpOnly(t *testing.T) {
 	}
 }
 
-func TestRoundSequenceWithCap(t *testing.T) {
-	seq := RoundSequence(4, "up_down", 10)
-	// 4p up_down full is 25 rounds, capped at 10
-	if len(seq) != 10 {
-		t.Errorf("capped to 10: got length %d, want 10", len(seq))
+func TestRoundSequenceMaxCardsCap(t *testing.T) {
+	// 4 players, up_down, maxCards=5: peak capped at 5
+	// Sequence: 1,2,3,4,5,4,3,2,1 = 9 rounds
+	seq := RoundSequence(4, "up_down", 5)
+	if len(seq) != 9 {
+		t.Errorf("maxCards=5 up_down: got length %d, want 9", len(seq))
+	}
+	if seq[4] != 5 {
+		t.Errorf("peak: got %d, want 5", seq[4])
 	}
 	if seq[0] != 1 {
 		t.Errorf("first: got %d, want 1", seq[0])
 	}
-	if seq[9] != 10 {
-		t.Errorf("round 10: got %d, want 10", seq[9])
+	if seq[8] != 1 {
+		t.Errorf("last: got %d, want 1", seq[8])
 	}
 }
 
-func TestRoundSequenceUpOnlyWithCap(t *testing.T) {
+func TestRoundSequenceMaxCardsUpOnly(t *testing.T) {
+	// 4 players, up_only, maxCards=7: peak capped at 7
+	// Sequence: 1,2,3,4,5,6,7 = 7 rounds
 	seq := RoundSequence(4, "up_only", 7)
 	if len(seq) != 7 {
-		t.Errorf("up_only capped to 7: got length %d, want 7", len(seq))
-	}
-	if seq[0] != 1 {
-		t.Errorf("first: got %d, want 1", seq[0])
+		t.Errorf("maxCards=7 up_only: got length %d, want 7", len(seq))
 	}
 	if seq[6] != 7 {
-		t.Errorf("round 7: got %d, want 7", seq[6])
+		t.Errorf("last: got %d, want 7", seq[6])
 	}
 }
 
@@ -100,20 +100,21 @@ func TestTotalRounds(t *testing.T) {
 	tests := []struct {
 		numPlayers int
 		direction  string
-		maxRounds  int
+		maxCards   int
 		expected   int
 	}{
 		{4, "up_down", 0, 25},
 		{5, "up_down", 0, 19},
 		{7, "up_down", 0, 13},
 		{4, "up_only", 0, 13},
-		{4, "up_down", 10, 10},
+		{4, "up_down", 5, 9},
+		{4, "up_only", 7, 7},
 	}
 
 	for _, tt := range tests {
-		got := TotalRounds(tt.numPlayers, tt.direction, tt.maxRounds)
+		got := TotalRounds(tt.numPlayers, tt.direction, tt.maxCards)
 		if got != tt.expected {
-			t.Errorf("TotalRounds(%d, %s, %d): got %d, want %d", tt.numPlayers, tt.direction, tt.maxRounds, got, tt.expected)
+			t.Errorf("TotalRounds(%d, %s, %d): got %d, want %d", tt.numPlayers, tt.direction, tt.maxCards, got, tt.expected)
 		}
 	}
 }
@@ -123,7 +124,7 @@ func TestCardsForRound(t *testing.T) {
 		round      int
 		numPlayers int
 		direction  string
-		maxRounds  int
+		maxCards   int
 		expected   int
 	}{
 		{1, 4, "up_down", 0, 1},
@@ -136,13 +137,19 @@ func TestCardsForRound(t *testing.T) {
 		{11, 5, "up_down", 0, 9},
 		{1, 4, "up_only", 0, 1},
 		{13, 4, "up_only", 0, 13},
-		{14, 4, "up_only", 0, 0}, // out of bounds
+		{14, 4, "up_only", 0, 0},
+		// maxCards=5, up_down
+		{1, 4, "up_down", 5, 1},
+		{5, 4, "up_down", 5, 5},
+		{6, 4, "up_down", 5, 4},
+		{9, 4, "up_down", 5, 1},
+		{10, 4, "up_down", 5, 0},
 	}
 
 	for _, tt := range tests {
-		got := CardsForRound(tt.round, tt.numPlayers, tt.direction, tt.maxRounds)
+		got := CardsForRound(tt.round, tt.numPlayers, tt.direction, tt.maxCards)
 		if got != tt.expected {
-			t.Errorf("CardsForRound(%d, %d, %s, %d): got %d, want %d", tt.round, tt.numPlayers, tt.direction, tt.maxRounds, got, tt.expected)
+			t.Errorf("CardsForRound(%d, %d, %s, %d): got %d, want %d", tt.round, tt.numPlayers, tt.direction, tt.maxCards, got, tt.expected)
 		}
 	}
 }
@@ -153,13 +160,13 @@ func TestCalculateScore(t *testing.T) {
 		tricksWon int
 		expected  int
 	}{
-		{0, 0, 10}, // bid 0, got 0: 10 + 3*0 = 10
-		{3, 3, 19}, // bid 3, got 3: 10 + 3*3 = 19
-		{5, 3, -6}, // bid 5, got 3: -3 * |5-3| = -6
-		{2, 4, -6}, // bid 2, got 4: -3 * |2-4| = -6
-		{1, 0, -3}, // bid 1, got 0: -3 * |1-0| = -3
-		{7, 7, 31}, // bid 7, got 7: 10 + 3*7 = 31
-		{0, 3, -9}, // bid 0, got 3: -3 * |0-3| = -9
+		{0, 0, 10},
+		{3, 3, 19},
+		{5, 3, -6},
+		{2, 4, -6},
+		{1, 0, -3},
+		{7, 7, 31},
+		{0, 3, -9},
 	}
 
 	for _, tt := range tests {
@@ -171,34 +178,24 @@ func TestCalculateScore(t *testing.T) {
 }
 
 func TestValidateBids(t *testing.T) {
-	// Valid: total != cards per player
 	if err := ValidateBids([]int{1, 2, 3}, 5); err != nil {
 		t.Errorf("ValidateBids([1,2,3], 5): unexpected error %v", err)
 	}
-
-	// Invalid: total == cards per player (blind rule)
 	if err := ValidateBids([]int{1, 2, 3}, 6); err == nil {
 		t.Errorf("ValidateBids([1,2,3], 6): expected error, got nil")
 	}
-
-	// Valid: total > cards per player
 	if err := ValidateBids([]int{2, 3, 4}, 5); err != nil {
 		t.Errorf("ValidateBids([2,3,4], 5): unexpected error %v", err)
 	}
-
-	// Valid: total < cards per player
 	if err := ValidateBids([]int{0, 0, 0}, 5); err != nil {
 		t.Errorf("ValidateBids([0,0,0], 5): unexpected error %v", err)
 	}
 }
 
 func TestValidateTricks(t *testing.T) {
-	// Valid: total == cards per player
 	if err := ValidateTricks([]int{1, 2, 3}, 6); err != nil {
 		t.Errorf("ValidateTricks([1,2,3], 6): unexpected error %v", err)
 	}
-
-	// Invalid: total != cards per player
 	if err := ValidateTricks([]int{1, 2, 2}, 6); err == nil {
 		t.Errorf("ValidateTricks([1,2,2], 6): expected error, got nil")
 	}

@@ -42,10 +42,11 @@ type GamePageData struct {
 	GameID        int64
 	CurrentRound  int
 	TotalRounds   int
+	RoundsLeft    int // rounds remaining including current
 	CardsPerRound int
 	Phase         string
 	Direction     string // "up_down" or "up_only"
-	MaxRounds     int    // configured total_rounds
+	MaxCards      int    // configured max cards per player
 	Players       []db.Player
 	Bids          map[int64]int
 	Results       []db.RoundResult
@@ -69,8 +70,8 @@ type ScoreboardRound struct {
 type ScoreboardRow struct {
 	PlayerID         int64
 	PlayerName       string
-	RoundScores      []int // indexed by ScoreboardData.Rounds
-	CumulativeScores []int // cumulative sum per round
+	RoundScores      []int
+	CumulativeScores []int
 	Total            int
 }
 
@@ -107,7 +108,6 @@ func (h *Handler) CreateGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse direction: default "up_down", can be "up_only"
 	direction := r.FormValue("direction")
 	if direction == "" {
 		direction = "up_down"
@@ -117,13 +117,12 @@ func (h *Handler) CreateGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse total_rounds: default to natural max if not provided or 0
-	totalRounds := 0
-	if trStr := r.FormValue("total_rounds"); trStr != "" {
+	maxCards := 0
+	if mcStr := r.FormValue("max_cards"); mcStr != "" {
 		var err error
-		totalRounds, err = strconv.Atoi(trStr)
-		if err != nil || totalRounds < 0 {
-			http.Error(w, "Ongeldig aantal rondes", http.StatusBadRequest)
+		maxCards, err = strconv.Atoi(mcStr)
+		if err != nil || maxCards < 0 {
+			http.Error(w, "Ongeldig maximaal aantal kaarten", http.StatusBadRequest)
 			return
 		}
 	}
@@ -142,12 +141,12 @@ func (h *Handler) CreateGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If totalRounds is 0 (or unset), calculate the natural max for this player count + direction
-	if totalRounds == 0 {
-		totalRounds = game.TotalRounds(len(playerNames), direction, 0)
+	// 0 means natural max
+	if maxCards == 0 {
+		maxCards = 52 / len(playerNames)
 	}
 
-	gameID, err := db.CreateGame(h.db, playerNames, direction, totalRounds)
+	gameID, err := db.CreateGame(h.db, playerNames, direction, maxCards)
 	if err != nil {
 		http.Error(w, "Fout bij aanmaken spel", http.StatusInternalServerError)
 		return
@@ -210,7 +209,7 @@ func (h *Handler) SubmitBids(w http.ResponseWriter, r *http.Request) {
 		bidValues = append(bidValues, bid)
 	}
 
-	cards := game.CardsForRound(g.CurrentRound, g.NumPlayers, g.Direction, g.TotalRounds)
+	cards := game.CardsForRound(g.CurrentRound, g.NumPlayers, g.Direction, g.MaxCards)
 	if err := game.ValidateBids(bidValues, cards); err != nil {
 		data, _ := h.buildGamePageData(gameID, err.Error())
 		render(w, "bids_partial", data)
@@ -274,7 +273,7 @@ func (h *Handler) SubmitTricks(w http.ResponseWriter, r *http.Request) {
 		trickValues = append(trickValues, trick)
 	}
 
-	cards := game.CardsForRound(g.CurrentRound, g.NumPlayers, g.Direction, g.TotalRounds)
+	cards := game.CardsForRound(g.CurrentRound, g.NumPlayers, g.Direction, g.MaxCards)
 	if err := game.ValidateTricks(trickValues, cards); err != nil {
 		data, _ := h.buildGamePageData(gameID, err.Error())
 		render(w, "tricks_partial", data)
@@ -319,7 +318,7 @@ func (h *Handler) NextRound(w http.ResponseWriter, r *http.Request) {
 	}
 
 	nextRound := g.CurrentRound + 1
-	totalRounds := game.TotalRounds(g.NumPlayers, g.Direction, g.TotalRounds)
+	totalRounds := game.TotalRounds(g.NumPlayers, g.Direction, g.MaxCards)
 
 	var newPhase string
 	if nextRound > totalRounds {
@@ -328,7 +327,6 @@ func (h *Handler) NextRound(w http.ResponseWriter, r *http.Request) {
 		newPhase = "bidding"
 	}
 
-	// For game_over, keep current_round at last played round
 	updateRound := nextRound
 	if newPhase == "game_over" {
 		updateRound = g.CurrentRound
@@ -375,35 +373,35 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newTotalRounds := 0
-	if trStr := r.FormValue("total_rounds"); trStr != "" {
-		newTotalRounds, err = strconv.Atoi(trStr)
-		if err != nil || newTotalRounds < 0 {
-			http.Error(w, "Ongeldig aantal rondes", http.StatusBadRequest)
+	newMaxCards := 0
+	if mcStr := r.FormValue("max_cards"); mcStr != "" {
+		newMaxCards, err = strconv.Atoi(mcStr)
+		if err != nil || newMaxCards <= 0 {
+			http.Error(w, "Ongeldig maximaal aantal kaarten", http.StatusBadRequest)
 			return
 		}
 	}
 
-	// Validate: new total must be >= current round
-	fullRounds := game.TotalRounds(g.NumPlayers, g.Direction, 0)
-	// 0 means "reset to natural max"
-	if newTotalRounds == 0 {
-		newTotalRounds = fullRounds
+	naturalMax := 52 / g.NumPlayers
+	if newMaxCards == 0 {
+		newMaxCards = naturalMax
 	}
-	if newTotalRounds > fullRounds {
-		newTotalRounds = fullRounds
+	if newMaxCards > naturalMax {
+		newMaxCards = naturalMax
 	}
+
+	// Validate: cards for current round must be <= new max
+	newTotalRounds := game.TotalRounds(g.NumPlayers, g.Direction, newMaxCards)
 	if newTotalRounds < g.CurrentRound {
-		http.Error(w, "Aantal rondes kan niet lager zijn dan de huidige ronde", http.StatusBadRequest)
+		http.Error(w, "Dit maximaal aantal kaarten geeft minder rondes dan de huidige ronde", http.StatusBadRequest)
 		return
 	}
 
-	if err := db.UpdateGameSettings(h.db, gameID, newTotalRounds); err != nil {
+	if err := db.UpdateGameMaxCards(h.db, gameID, newMaxCards); err != nil {
 		http.Error(w, "Fout bij bijwerken instellingen", http.StatusInternalServerError)
 		return
 	}
 
-	// Re-render the game page with updated settings
 	data, err := h.buildGamePageData(gameID, "")
 	if err != nil {
 		http.Error(w, "Fout bij laden spel", http.StatusInternalServerError)
@@ -433,15 +431,16 @@ func (h *Handler) PlayerRow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	maxCards := 52 / total
-	maxRounds := maxCards
+	naturalMax := 52 / total
+	maxRounds := naturalMax
 	if direction == "up_down" {
-		maxRounds = 2*maxCards - 1
+		maxRounds = 2*naturalMax - 1
 	}
 
 	data := map[string]any{
 		"Index":       index,
 		"IndexMinus1": index - 1,
+		"NaturalMax":  naturalMax,
 		"MaxRounds":   maxRounds,
 	}
 	render(w, "player_row_with_rounds", data)
@@ -460,13 +459,13 @@ func (h *Handler) RoundsCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	maxCards := 52 / total
-	maxRounds := maxCards
+	naturalMax := 52 / total
+	maxRounds := naturalMax
 	if direction == "up_down" {
-		maxRounds = 2*maxCards - 1
+		maxRounds = 2*naturalMax - 1
 	}
 
-	render(w, "rounds_oob", map[string]any{"MaxRounds": maxRounds})
+	render(w, "rounds_oob", map[string]any{"NaturalMax": naturalMax, "MaxRounds": maxRounds})
 }
 
 func (h *Handler) buildGamePageData(gameID int64, errMsg string) (*GamePageData, error) {
@@ -480,17 +479,16 @@ func (h *Handler) buildGamePageData(gameID int64, errMsg string) (*GamePageData,
 		return nil, err
 	}
 
-	totalRounds := game.TotalRounds(g.NumPlayers, g.Direction, g.TotalRounds)
-	cardsPerRound := game.CardsForRound(g.CurrentRound, g.NumPlayers, g.Direction, g.TotalRounds)
+	totalRounds := game.TotalRounds(g.NumPlayers, g.Direction, g.MaxCards)
+	cardsPerRound := game.CardsForRound(g.CurrentRound, g.NumPlayers, g.Direction, g.MaxCards)
 	isLastRound := g.CurrentRound == totalRounds
+	roundsLeft := totalRounds - g.CurrentRound + 1
 
-	// For game_over, set total rounds and cards info
 	if g.Phase == "game_over" {
 		isLastRound = true
+		roundsLeft = 0
 	}
 
-	// Dealer rotates each round: round 1 = players[0], round 2 = players[1], etc.
-	// First bidder (who opens the betting) = the player after the dealer.
 	var dealerID, firstBidderID int64
 	if len(players) > 0 {
 		dealerIdx := (g.CurrentRound - 1) % len(players)
@@ -503,10 +501,11 @@ func (h *Handler) buildGamePageData(gameID int64, errMsg string) (*GamePageData,
 		GameID:        gameID,
 		CurrentRound:  g.CurrentRound,
 		TotalRounds:   totalRounds,
+		RoundsLeft:    roundsLeft,
 		CardsPerRound: cardsPerRound,
 		Phase:         g.Phase,
 		Direction:     g.Direction,
-		MaxRounds:     g.TotalRounds,
+		MaxCards:      g.MaxCards,
 		Players:       players,
 		Error:         errMsg,
 		IsLastRound:   isLastRound,
@@ -514,7 +513,6 @@ func (h *Handler) buildGamePageData(gameID int64, errMsg string) (*GamePageData,
 		FirstBidderID: firstBidderID,
 	}
 
-	// Load bids if in playing or later phase
 	if g.Phase == "playing" || g.Phase == "round_summary" || g.Phase == "game_over" {
 		bids, err := db.GetBidsForRound(h.db, gameID, g.CurrentRound)
 		if err == nil {
@@ -522,7 +520,6 @@ func (h *Handler) buildGamePageData(gameID int64, errMsg string) (*GamePageData,
 		}
 	}
 
-	// Load round results for current round (and game_over needs all results for final display)
 	if g.Phase == "round_summary" {
 		results, err := db.GetRoundResults(h.db, gameID, g.CurrentRound)
 		if err == nil {
@@ -530,7 +527,6 @@ func (h *Handler) buildGamePageData(gameID int64, errMsg string) (*GamePageData,
 		}
 	}
 
-	// Build scoreboard
 	scoreboard, err := h.buildScoreboard(gameID, g, players)
 	if err == nil {
 		data.Scoreboard = scoreboard
@@ -549,7 +545,6 @@ func (h *Handler) buildScoreboard(gameID int64, g *db.Game, players []db.Player)
 		Rows: make([]ScoreboardRow, len(players)),
 	}
 
-	// Determine completed round numbers (sorted)
 	completedRounds := make(map[int]bool)
 	for _, r := range allResults {
 		if r.Score.Valid {
@@ -564,15 +559,13 @@ func (h *Handler) buildScoreboard(gameID int64, g *db.Game, players []db.Player)
 		}
 	}
 
-	// Build round info
 	for _, rn := range roundNums {
 		sd.Rounds = append(sd.Rounds, ScoreboardRound{
 			Number:         rn,
-			CardsPerPlayer: game.CardsForRound(rn, g.NumPlayers, g.Direction, g.TotalRounds),
+			CardsPerPlayer: game.CardsForRound(rn, g.NumPlayers, g.Direction, g.MaxCards),
 		})
 	}
 
-	// Build rows
 	playerMap := make(map[int64]int)
 	for i, p := range players {
 		sd.Rows[i] = ScoreboardRow{
@@ -586,7 +579,6 @@ func (h *Handler) buildScoreboard(gameID int64, g *db.Game, players []db.Player)
 	for _, r := range allResults {
 		if r.Score.Valid {
 			if idx, ok := playerMap[r.PlayerID]; ok {
-				// Find the column index for this round number
 				for colIdx, rn := range roundNums {
 					if rn == r.RoundNumber {
 						sd.Rows[idx].RoundScores[colIdx] = int(r.Score.Int64)
@@ -598,7 +590,6 @@ func (h *Handler) buildScoreboard(gameID int64, g *db.Game, players []db.Player)
 		}
 	}
 
-	// Build cumulative scores
 	for i := range sd.Rows {
 		sd.Rows[i].CumulativeScores = make([]int, len(roundNums))
 		cum := 0
@@ -608,7 +599,6 @@ func (h *Handler) buildScoreboard(gameID int64, g *db.Game, players []db.Player)
 		}
 	}
 
-	// Sort rows: highest total first, lowest at bottom
 	sort.Slice(sd.Rows, func(i, j int) bool {
 		return sd.Rows[i].Total > sd.Rows[j].Total
 	})
