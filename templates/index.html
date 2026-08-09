@@ -111,52 +111,15 @@
             }
         })();
 
-        var addBtn = document.getElementById('add-player-btn');
-        var inputs = document.getElementById('player-inputs');
-        var playerCount = 2;
-
-        addBtn.addEventListener('click', function() {
-            playerCount++;
-            if (playerCount > 8) {
-                alert('Maximaal 8 spelers toegestaan.');
-                return;
-            }
-            var div = document.createElement('div');
-            div.className = 'flex items-center gap-3';
-            div.innerHTML = `
-                <span class="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm">${playerCount}</span>
-                <input type="text" name="player_${playerCount - 1}" required
-                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                    placeholder="Naam speler ${playerCount}">
-                <button type="button" class="remove-player px-2 py-1 text-red-500 hover:text-red-700 text-xl">&times;</button>
-            `;
-            inputs.appendChild(div);
-
-            div.querySelector('.remove-player').addEventListener('click', function() {
-                div.remove();
-                // Re-number remaining players
-                renumberPlayers();
-            });
-        });
-
-        function renumberPlayers() {
-            var allInputs = document.querySelectorAll('#player-inputs input[type="text"]');
-            playerCount = allInputs.length;
-            allInputs.forEach(function(input, i) {
-                input.name = 'player_' + i;
-                input.placeholder = 'Naam speler ' + (i + 1);
-                var badge = input.parentElement.querySelector('span');
-                if (badge) badge.textContent = i + 1;
-            });
-        }
-
-        // --- Auto-calculate max rounds based on player count and direction ---
+        // --- Player management & rounds calculation ---
         (function() {
+            var inputsContainer = document.getElementById('player-inputs');
+            var addBtn = document.getElementById('add-player-btn');
             var directionRadios = document.querySelectorAll('input[name="direction"]');
             var roundsInput = document.getElementById('total_rounds');
 
             function getPlayerCount() {
-                return document.querySelectorAll('#player-inputs input[type="text"]').length;
+                return inputsContainer.querySelectorAll('input[type="text"]').length;
             }
 
             function getDirection() {
@@ -167,7 +130,7 @@
             function maxRounds(players, direction) {
                 var maxCards = Math.floor(52 / players);
                 if (direction === 'up_only') return maxCards;
-                return 2 * maxCards - 1; // pyramid
+                return 2 * maxCards - 1;
             }
 
             function updateRoundsDefault() {
@@ -175,29 +138,59 @@
                 if (players < 2) return;
                 var max = maxRounds(players, getDirection());
                 roundsInput.max = max;
-                // Only update value if user hasn't manually changed it, or if new max < current value
                 if (!roundsInput.dataset.userEdited || parseInt(roundsInput.value) > max) {
                     roundsInput.value = max;
                     roundsInput.dataset.userEdited = '';
                 }
             }
 
+            // Mark user-edited so we don't overwrite their choice
+            roundsInput.addEventListener('input', function() {
+                roundsInput.dataset.userEdited = '1';
+            });
+
             // Recalculate when direction changes
             directionRadios.forEach(function(radio) {
                 radio.addEventListener('change', updateRoundsDefault);
             });
 
-            // Recalculate when players are added/removed
-            var observer = new MutationObserver(function() {
-                renumberPlayers();
+            // Add player button
+            addBtn.addEventListener('click', function() {
+                var count = getPlayerCount();
+                if (count >= 8) {
+                    alert('Maximaal 8 spelers toegestaan.');
+                    return;
+                }
+
+                var div = document.createElement('div');
+                div.className = 'flex items-center gap-3';
+                div.innerHTML =
+                    '<span class="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm">' + (count + 1) + '</span>' +
+                    '<input type="text" name="player_' + count + '" required' +
+                    ' class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"' +
+                    ' placeholder="Naam speler ' + (count + 1) + '">' +
+                    '<button type="button" class="remove-player px-2 py-1 text-red-500 hover:text-red-700 text-xl">&times;</button>';
+                inputsContainer.appendChild(div);
+
+                // Remove handler
+                div.querySelector('.remove-player').addEventListener('click', function() {
+                    div.remove();
+                    renumberAllPlayers();
+                    updateRoundsDefault();
+                });
+
                 updateRoundsDefault();
             });
-            observer.observe(document.getElementById('player-inputs'), { childList: true, subtree: true });
 
-            // Mark user-edited so we don't overwrite their choice
-            roundsInput.addEventListener('input', function() {
-                roundsInput.dataset.userEdited = '1';
-            });
+            function renumberAllPlayers() {
+                var allInputs = inputsContainer.querySelectorAll('input[type="text"]');
+                allInputs.forEach(function(input, i) {
+                    input.name = 'player_' + i;
+                    input.placeholder = 'Naam speler ' + (i + 1);
+                    var badge = input.parentElement.querySelector('span');
+                    if (badge) badge.textContent = i + 1;
+                });
+            }
 
             // Initial calculation
             updateRoundsDefault();
