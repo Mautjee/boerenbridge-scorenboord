@@ -96,6 +96,7 @@
         {{end}}
 
         var colors = ['#047857', '#b91c1c', '#1d4ed8', '#7c3aed', '#b45309', '#0e7490', '#a21caf', '#4d7c0f'];
+        var dashStyles = [[], [6, 3], [2, 2], [10, 4, 2, 4]];
         var datasets = [];
         {{range $i, $row := .Scoreboard.Rows}}
         datasets.push({
@@ -103,7 +104,8 @@
             data: [{{range $row.CumulativeScores}}{{.}},{{end}}],
             borderColor: colors[{{$i}} % colors.length],
             backgroundColor: colors[{{$i}} % colors.length] + '20',
-            borderWidth: 2,
+            borderWidth: 2.5,
+            borderDash: dashStyles[{{$i}} % dashStyles.length],
             tension: 0.2,
             pointRadius: 4,
             pointHoverRadius: 6,
@@ -116,7 +118,17 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom' } },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                },
                 scales: {
                     y: { title: { display: true, text: 'Cumulatieve punten' } },
                     x: { title: { display: true, text: 'Ronde' } },
