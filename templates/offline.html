@@ -1,0 +1,105 @@
+{{define "offline_page"}}
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boerenbridge Scorebord</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#047857">
+    <link rel="icon" href="/static/icon-192.svg">
+    <link rel="apple-touch-icon" href="/static/icon-192.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style type="text/tailwindcss">
+        @layer base { body { @apply bg-gray-50; } }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-emerald-50 to-green-100">
+    <nav class="bg-emerald-700 text-white shadow-lg">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <span class="text-xl font-bold">🃏 Boerenbridge Scorebord</span>
+            <span class="text-xs text-emerald-200">📴 Offline</span>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 py-6">
+        <!-- Loading -->
+        <div id="loading" class="text-center py-20">
+            <div class="inline-block w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="mt-4 text-gray-600">Database laden...</p>
+        </div>
+
+        <!-- Game List Page -->
+        <div id="game-list-page" class="page hidden">
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-2xl font-bold text-emerald-800">Mijn Spellen</h1>
+                <button onclick="renderNewGame()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">
+                    + Nieuw Spel
+                </button>
+            </div>
+            <div id="game-list-content"></div>
+        </div>
+
+        <!-- New Game Page -->
+        <div id="new-game-page" class="page hidden">
+            <button onclick="showPage('game-list-page');renderGameList()" class="mb-4 text-emerald-700 hover:text-emerald-800 font-medium">← Terug</button>
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <h1 class="text-2xl font-bold text-emerald-800 mb-4">Nieuw Spel</h1>
+
+                <div id="offline-player-inputs" class="space-y-3 mb-6">
+                    <div class="flex items-center gap-3 player-row">
+                        <span class="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm">1</span>
+                        <input type="text" required class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="Naam speler 1">
+                    </div>
+                    <div class="flex items-center gap-3 player-row">
+                        <span class="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm">2</span>
+                        <input type="text" required class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="Naam speler 2">
+                    </div>
+                </div>
+
+                <button type="button" onclick="addPlayerRow()" class="mb-6 px-4 py-2 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition">
+                    + Speler toevoegen
+                </button>
+
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg space-y-4">
+                    <h3 class="font-semibold text-gray-700">Spelinstellingen</h3>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-2">Richting</label>
+                        <div class="flex gap-3">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="offline_direction" value="up_down" checked class="accent-emerald-600" onchange="refreshOfflineSettings()">
+                                <span class="text-gray-700">↕️ Omhoog en omlaag (piramide)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="offline_direction" value="up_only" class="accent-emerald-600" onchange="refreshOfflineSettings()">
+                                <span class="text-gray-700">⬆️ Alleen omhoog</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="offline_max_cards" class="block text-sm font-medium text-gray-600 mb-1">Max kaarten per speler</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="offline_max_cards" min="1" value="26" class="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                                oninput="this.dataset.userEdited='1'">
+                            <span id="offline-rounds-hint" class="text-xs text-gray-400">→ 51 rondes</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="startOfflineGame()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">
+                    Start Spel
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Page -->
+        <div id="game-page" class="page hidden">
+            <div id="game-content"></div>
+        </div>
+    </main>
+
+    <script src="/static/offline.js"></script>
+</body>
+</html>
+{{end}}

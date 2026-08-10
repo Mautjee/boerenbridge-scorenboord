@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boerenbridge Scorebord</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#047857">
+    <link rel="icon" href="/static/icon-192.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <style type="text/tailwindcss">
@@ -15,8 +18,9 @@
 </head>
 <body class="min-h-screen bg-gradient-to-br from-emerald-50 to-green-100">
     <nav class="bg-emerald-700 text-white shadow-lg">
-        <div class="max-w-4xl mx-auto px-4 py-3">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
             <a href="/" class="text-xl font-bold">🃏 Boerenbridge Scorebord</a>
+            <a href="/offline" class="text-xs text-emerald-200 hover:text-white transition">📴 Offline</a>
         </div>
     </nav>
 
@@ -152,6 +156,11 @@
 
         // Initial calculation
         refreshSettings();
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js');
+        }
     </script>
 </body>
 </html>

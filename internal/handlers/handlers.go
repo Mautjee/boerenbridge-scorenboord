@@ -102,6 +102,10 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 	render(w, "index_page", nil)
 }
 
+func (h *Handler) Offline(w http.ResponseWriter, r *http.Request) {
+	render(w, "offline_page", nil)
+}
+
 func (h *Handler) CreateGame(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Ongeldig formulier", http.StatusBadRequest)

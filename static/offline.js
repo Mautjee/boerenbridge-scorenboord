@@ -1,0 +1,730 @@
+// Boerenbridge offline engine — DuckDB-WASM + game logic
+let db = null;
+let conn = null;
+
+// ── Game logic (mirrors Go internal/game/game.go) ──
+
+function roundSequence(numPlayers, direction, maxCards) {
+  const naturalMax = Math.floor(52 / numPlayers);
+  let peak = naturalMax;
+  if (maxCards > 0 && maxCards < peak) peak = maxCards;
+
+  const seq = [];
+  if (direction === 'up_only') {
+    for (let i = 1; i <= peak; i++) seq.push(i);
+  } else {
+    for (let i = 1; i <= peak; i++) seq.push(i);
+    for (let i = peak - 1; i >= 1; i--) seq.push(i);
+  }
+  return seq;
+}
+
+function totalRounds(numPlayers, direction, maxCards) {
+  return roundSequence(numPlayers, direction, maxCards).length;
+}
+
+function cardsForRound(roundNum, numPlayers, direction, maxCards) {
+  const seq = roundSequence(numPlayers, direction, maxCards);
+  if (roundNum < 1 || roundNum > seq.length) return 0;
+  return seq[roundNum - 1];
+}
+
+function calculateScore(bid, tricksWon) {
+  if (bid === tricksWon) return 10 + 3 * bid;
+  return -3 * Math.abs(bid - tricksWon);
+}
+
+function validateBids(bids, cards) {
+  const total = bids.reduce((a, b) => a + b, 0);
+  if (total === cards) return 'De biedingen mogen samen niet optellen tot ' + cards + ' (blinde regel)';
+  return null;
+}
+
+function validateTricks(tricks, cards) {
+  const total = tricks.reduce((a, b) => a + b, 0);
+  if (total !== cards) return 'Het totaal aantal gewonnen slagen (' + total + ') moet gelijk zijn aan het aantal kaarten per speler (' + cards + ')';
+  return null;
+}
+
+// ── DuckDB init ──
+
+async function initDB() {
+  const duckdb = await import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-blocking.worker.js'
+  ).then(m => m.default || m);
+
+  const JSDELIVR_BUNDLES = {
+    mvp: {
+      mainModule: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-blocking.worker.js',
+      mainWorker: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-blocking.worker.js',
+    },
+    eh: {
+      mainModule: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-eh.worker.js',
+      mainWorker: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-eh.worker.js',
+    },
+  };
+
+  const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+  const worker = new Worker(bundle.mainWorker);
+  const logger = new duckdb.ConsoleLogger();
+  db = new duckdb.AsyncDuckDB(logger, worker);
+  await db.instantiate(bundle.mainModule);
+
+  conn = await db.connect();
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS games (
+      id INTEGER PRIMARY KEY,
+      current_round INTEGER NOT NULL DEFAULT 1,
+      phase TEXT NOT NULL DEFAULT 'bidding',
+      direction TEXT NOT NULL DEFAULT 'up_down',
+      max_cards INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+    );
+    CREATE TABLE IF NOT EXISTS players (
+      id INTEGER PRIMARY KEY,
+      game_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      position INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS round_results (
+      id INTEGER PRIMARY KEY,
+      game_id INTEGER NOT NULL,
+      round_number INTEGER NOT NULL,
+      player_id INTEGER NOT NULL,
+      bid INTEGER,
+      tricks_won INTEGER,
+      score INTEGER
+    );
+  `);
+
+  return true;
+}
+
+// ── DB helpers ──
+
+async function createGame(playerNames, direction, maxCards) {
+  await conn.query(`INSERT INTO games (direction, max_cards) VALUES ('${direction}', ${maxCards})`);
+  const gameRows = await conn.query(`SELECT last_insert_rowid() as id`);
+  const gameId = Number(gameRows.toArray()[0].id);
+
+  for (let i = 0; i < playerNames.length; i++) {
+    await conn.query(
+      `INSERT INTO players (game_id, name, position) VALUES (${gameId}, '${playerNames[i].replace(/'/g, "''")}', ${i})`
+    );
+  }
+  return gameId;
+}
+
+async function getGame(gameId) {
+  const rows = (await conn.query(`SELECT * FROM games WHERE id = ${gameId}`)).toArray();
+  if (!rows.length) return null;
+  const g = rows[0];
+  const players = (await conn.query(`SELECT * FROM players WHERE game_id = ${gameId} ORDER BY position`)).toArray();
+  g.numPlayers = players.length;
+  return { game: g, players };
+}
+
+async function updateGamePhase(gameId, round, phase) {
+  await conn.query(`UPDATE games SET current_round = ${round}, phase = '${phase}' WHERE id = ${gameId}`);
+}
+
+async function saveBids(gameId, round, bids) {
+  for (const [playerId, bid] of Object.entries(bids)) {
+    await conn.query(
+      `INSERT INTO round_results (game_id, round_number, player_id, bid) VALUES (${gameId}, ${round}, ${playerId}, ${bid})`
+    );
+  }
+}
+
+async function saveTricksAndScores(gameId, round, tricks) {
+  for (const [playerId, trick] of Object.entries(tricks)) {
+    const rows = (await conn.query(
+      `SELECT bid FROM round_results WHERE game_id = ${gameId} AND round_number = ${round} AND player_id = ${playerId}`
+    )).toArray();
+    const bid = rows[0].bid;
+    const score = calculateScore(bid, trick);
+    await conn.query(
+      `UPDATE round_results SET tricks_won = ${trick}, score = ${score} WHERE game_id = ${gameId} AND round_number = ${round} AND player_id = ${playerId}`
+    );
+  }
+}
+
+async function getAllResults(gameId) {
+  const rows = (await conn.query(
+    `SELECT rr.round_number, rr.player_id, p.name as player_name, rr.bid, rr.tricks_won, rr.score
+     FROM round_results rr JOIN players p ON rr.player_id = p.id
+     WHERE rr.game_id = ${gameId} ORDER BY rr.round_number, p.position`
+  )).toArray();
+  return rows;
+}
+
+// ── Scoreboard data ──
+
+async function buildScoreboard(gameId, g, players) {
+  const results = await getAllResults(gameId);
+
+  const completedRounds = new Set();
+  for (const r of results) {
+    if (r.score !== null) completedRounds.add(r.round_number);
+  }
+
+  const roundNums = [];
+  for (let rn = 1; rn <= g.current_round; rn++) {
+    if (completedRounds.has(rn)) roundNums.push(rn);
+  }
+
+  const rounds = roundNums.map(rn => ({
+    number: rn,
+    cardsPerPlayer: cardsForRound(rn, g.numPlayers, g.direction, g.max_cards),
+  }));
+
+  const playerMap = {};
+  const rows = players.map((p, i) => {
+    playerMap[p.id] = i;
+    return {
+      playerId: p.id,
+      playerName: p.name,
+      roundScores: new Array(roundNums.length).fill(0),
+      total: 0,
+    };
+  });
+
+  for (const r of results) {
+    if (r.score !== null) {
+      const idx = playerMap[r.player_id];
+      const colIdx = roundNums.indexOf(r.round_number);
+      if (idx !== undefined && colIdx >= 0) {
+        rows[idx].roundScores[colIdx] = r.score;
+        rows[idx].total += r.score;
+      }
+    }
+  }
+
+  // Cumulative scores
+  for (const row of rows) {
+    row.cumulativeScores = [];
+    let cum = 0;
+    for (const s of row.roundScores) {
+      cum += s;
+      row.cumulativeScores.push(cum);
+    }
+  }
+
+  rows.sort((a, b) => b.total - a.total);
+  return { rounds, rows };
+}
+
+// ── UI rendering ──
+
+const COLORS = ['#047857', '#b91c1c', '#1d4ed8', '#7c3aed', '#b45309', '#0e7490', '#a21caf', '#4d7c0f'];
+const DASH = [[], [6, 3], [2, 2], [10, 4, 2, 4]];
+let chart = null;
+let currentGameId = null;
+
+function el(tag, attrs = {}, ...children) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'className') e.className = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  }
+  for (const c of children) {
+    if (typeof c === 'string') e.appendChild(document.createTextNode(c));
+    else if (c) e.appendChild(c);
+  }
+  return e;
+}
+
+function render(el, html) {
+  el.innerHTML = html;
+}
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+// ── Page: Game list ──
+
+async function renderGameList() {
+  const container = document.getElementById('game-list-content');
+  const games = (await conn.query(`SELECT * FROM games ORDER BY id DESC`)).toArray();
+  const playerCounts = {};
+
+  for (const g of games) {
+    const p = (await conn.query(`SELECT COUNT(*) as cnt FROM players WHERE game_id = ${g.id}`)).toArray();
+    playerCounts[g.id] = p[0].cnt;
+  }
+
+  if (!games.length) {
+    render(container, '<p class="text-gray-500 italic">Nog geen spellen gespeeld. Start een nieuw spel!</p>');
+    return;
+  }
+
+  let html = '<div class="space-y-2">';
+  for (const g of games) {
+    const rounds = totalRounds(playerCounts[g.id], g.direction, g.max_cards);
+    const phaseText = {
+      'bidding': 'Biedingen',
+      'playing': 'Slagen',
+      'round_summary': 'Ronde overzicht',
+      'game_over': 'Afgelopen 🏆',
+    }[g.phase] || g.phase;
+
+    html += `
+      <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-emerald-300 cursor-pointer transition"
+           onclick="loadGame(${g.id})">
+        <div>
+          <span class="font-medium text-gray-800">Spel #${g.id}</span>
+          <span class="text-sm text-gray-500 ml-2">${playerCounts[g.id]} spelers · ${g.direction === 'up_only' ? 'Alleen omhoog' : 'Piramide'}
+            · max ${g.max_cards || Math.floor(52 / playerCounts[g.id])} kaarten</span>
+        </div>
+        <div class="text-right">
+          <span class="text-sm font-medium ${g.phase === 'game_over' ? 'text-emerald-700' : 'text-amber-600'}">${phaseText}</span>
+          <div class="text-xs text-gray-400">Ronde ${g.current_round} / ${rounds}</div>
+        </div>
+      </div>`;
+  }
+  html += '</div>';
+  render(container, html);
+}
+
+// ── Page: New game ──
+
+function renderNewGame() {
+  showPage('new-game-page');
+}
+
+function addPlayerRow() {
+  const container = document.getElementById('offline-player-inputs');
+  const count = container.querySelectorAll('.player-row').length;
+  if (count >= 8) { alert('Maximaal 8 spelers.'); return; }
+  const div = el('div', { className: 'flex items-center gap-3 player-row' },
+    el('span', { className: 'w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm' }, String(count + 1)),
+    el('input', { type: 'text', required: true, className: 'flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none', placeholder: 'Naam speler ' + (count + 1) }),
+    el('button', { type: 'button', className: 'px-2 py-1 text-red-500 hover:text-red-700 text-xl', onclick() { div.remove(); refreshOfflineSettings(); } }, '×'),
+  );
+  container.appendChild(div);
+  refreshOfflineSettings();
+}
+
+function refreshOfflineSettings() {
+  const count = document.querySelectorAll('#offline-player-inputs .player-row').length;
+  if (count < 2) return;
+  const dir = document.querySelector('input[name="offline_direction"]:checked').value;
+  const naturalMax = Math.floor(52 / count);
+  const rounds = dir === 'up_only' ? naturalMax : 2 * naturalMax - 1;
+  document.getElementById('offline_max_cards').max = naturalMax;
+  if (!document.getElementById('offline_max_cards').dataset.userEdited) {
+    document.getElementById('offline_max_cards').value = naturalMax;
+  }
+  document.getElementById('offline-rounds-hint').textContent = '→ ' + rounds + ' rondes';
+}
+
+async function startOfflineGame() {
+  const names = [];
+  document.querySelectorAll('#offline-player-inputs input[type="text"]').forEach(i => names.push(i.value.trim()));
+  if (names.length < 2) { alert('Minimaal 2 spelers vereist.'); return; }
+  const direction = document.querySelector('input[name="offline_direction"]:checked').value;
+  let maxCards = parseInt(document.getElementById('offline_max_cards').value) || 0;
+  if (maxCards === 0) maxCards = Math.floor(52 / names.length);
+
+  const gameId = await createGame(names, direction, maxCards);
+  await loadGame(gameId);
+}
+
+// ── Page: Game ──
+
+async function loadGame(gameId) {
+  currentGameId = gameId;
+  showPage('game-page');
+  await renderGameView();
+}
+
+async function renderGameView() {
+  const { game: g, players } = await getGame(currentGameId);
+  if (!g) { showPage('game-list-page'); return; }
+
+  const tRounds = totalRounds(g.numPlayers, g.direction, g.max_cards);
+  const cards = cardsForRound(g.current_round, g.numPlayers, g.direction, g.max_cards);
+  const roundsLeft = g.phase !== 'game_over' ? tRounds - g.current_round + 1 : 0;
+
+  // Header
+  let html = `
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-4">
+      <div class="flex items-center justify-between mb-2">
+        <h1 class="text-2xl font-bold text-emerald-800">Spel #${g.id}</h1>
+        <button onclick="showPage('game-list-page');renderGameList()" class="text-sm text-gray-500 hover:text-gray-700">← Terug</button>
+      </div>
+      <p class="text-gray-600">
+        ${g.direction === 'up_only' ? 'Alleen omhoog' : 'Piramide'} · ${g.numPlayers} spelers · max ${g.max_cards || Math.floor(52 / g.numPlayers)} kaarten · ${tRounds} rondes
+        ${g.phase !== 'game_over' ? ` · <strong>${roundsLeft}</strong> nog te spelen` : ''}
+      </p>
+    </div>
+  `;
+
+  // Scoreboard
+  const sb = await buildScoreboard(currentGameId, g, players);
+  html += renderScoreboardHTML(sb);
+
+  // Game phase content
+  if (g.phase === 'bidding') {
+    html += renderBiddingPhase(g, players, cards);
+  } else if (g.phase === 'playing') {
+    const bids = await getCurrentBids(g);
+    html += renderPlayingPhase(g, players, cards, bids);
+  } else if (g.phase === 'round_summary') {
+    const results = (await conn.query(
+      `SELECT rr.*, p.name FROM round_results rr JOIN players p ON rr.player_id = p.id
+       WHERE rr.game_id = ${currentGameId} AND rr.round_number = ${g.current_round} ORDER BY p.position`
+    )).toArray();
+    html += renderSummaryPhase(g, players, cards, results, tRounds);
+  } else if (g.phase === 'game_over') {
+    html += renderGameOver(sb);
+  }
+
+  render(document.getElementById('game-content'), html);
+
+  // Restore graph preference
+  const savedView = localStorage.getItem('boerenbridge_scoreboard_view');
+  if (savedView === 'graph' && sb.rounds.length) {
+    document.getElementById('scoreboard-table').classList.add('hidden');
+    document.getElementById('scoreboard-graph').classList.remove('hidden');
+    document.getElementById('scoreboard-toggle').textContent = '📋 Tabel';
+    drawOfflineChart(sb);
+  }
+}
+
+function renderScoreboardHTML(sb) {
+  if (!sb.rounds.length) {
+    return `<div id="scoreboard" class="bg-white rounded-xl shadow-lg p-6 mb-4">
+      <h2 class="text-xl font-bold text-emerald-800 mb-4">Scorebord</h2>
+      <p class="text-gray-500 italic">Nog geen rondes gespeeld.</p></div>`;
+  }
+
+  let html = `<div id="scoreboard" class="bg-white rounded-xl shadow-lg p-6 mb-4">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-bold text-emerald-800">Scorebord</h2>
+      <button id="scoreboard-toggle" onclick="toggleOfflineScoreboard()" class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">📊 Grafiek</button>
+    </div>
+    <div id="scoreboard-table" class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b-2 border-emerald-200">
+          <th class="text-left py-2 px-2 font-semibold text-gray-700 sticky left-0 bg-white z-10">Speler</th>`;
+
+  for (const r of sb.rounds) {
+    html += `<th class="text-center py-2 px-2 font-semibold text-gray-600 whitespace-nowrap">R${r.number} (${r.cardsPerPlayer})</th>`;
+  }
+  html += `<th class="text-center py-2 px-3 font-bold text-emerald-800 border-l-2 border-emerald-200">Totaal</th></tr></thead><tbody>`;
+
+  for (const row of sb.rows) {
+    html += `<tr class="border-b border-gray-100 hover:bg-gray-50">
+      <td class="py-2 px-2 font-medium text-gray-800 sticky left-0 bg-white z-10">${row.playerName}</td>`;
+    for (const s of row.roundScores) {
+      html += `<td class="text-center py-2 px-2 ${s >= 0 ? 'text-emerald-700' : 'text-red-600'}">${s}</td>`;
+    }
+    html += `<td class="text-center py-2 px-3 font-bold text-emerald-800 border-l-2 border-emerald-200">${row.total}</td></tr>`;
+  }
+  html += `</tbody></table></div>
+    <div id="scoreboard-graph" class="hidden" style="height:350px"><canvas id="scoreChart"></canvas></div></div>`;
+
+  return html;
+}
+
+function toggleOfflineScoreboard() {
+  const table = document.getElementById('scoreboard-table');
+  const graph = document.getElementById('scoreboard-graph');
+  const btn = document.getElementById('scoreboard-toggle');
+  if (table.classList.contains('hidden')) {
+    table.classList.remove('hidden');
+    graph.classList.add('hidden');
+    btn.textContent = '📊 Grafiek';
+    localStorage.setItem('boerenbridge_scoreboard_view', 'table');
+  } else {
+    table.classList.add('hidden');
+    graph.classList.remove('hidden');
+    btn.textContent = '📋 Tabel';
+    localStorage.setItem('boerenbridge_scoreboard_view', 'graph');
+    drawOfflineChart(currentScoreboardData);
+  }
+}
+
+let currentScoreboardData = null;
+
+function drawOfflineChart(sb) {
+  if (!sb) return;
+  currentScoreboardData = sb;
+  if (chart) chart.destroy();
+  const canvas = document.getElementById('scoreChart');
+  if (!canvas) return;
+
+  const labels = sb.rounds.map(r => 'R' + r.number);
+  const datasets = sb.rows.map((row, i) => ({
+    label: row.playerName,
+    data: row.cumulativeScores,
+    borderColor: COLORS[i % COLORS.length],
+    backgroundColor: COLORS[i % COLORS.length] + '20',
+    borderWidth: 2.5,
+    borderDash: DASH[i % DASH.length],
+    tension: 0.2,
+    pointRadius: 4,
+    pointHoverRadius: 6,
+  }));
+
+  chart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'bottom' }, tooltip: { mode: 'index', intersect: false } },
+      scales: {
+        y: { title: { display: true, text: 'Cumulatieve punten' } },
+        x: { title: { display: true, text: 'Ronde' } },
+      },
+    },
+  });
+}
+
+// ── Phase renderers ──
+
+async function getCurrentBids(g) {
+  const rows = (await conn.query(
+    `SELECT player_id, bid FROM round_results WHERE game_id = ${currentGameId} AND round_number = ${g.current_round}`
+  )).toArray();
+  const bids = {};
+  for (const r of rows) bids[r.player_id] = r.bid;
+  return bids;
+}
+
+function renderBiddingPhase(g, players, cards) {
+  const dealerIdx = (g.current_round - 1) % players.length;
+  const firstBidderIdx = (dealerIdx + 1) % players.length;
+
+  let html = `<div class="bg-white rounded-xl shadow-lg p-6">
+    <h2 class="text-2xl font-bold text-emerald-800 mb-2">Biedingen invoeren</h2>
+    <p class="text-gray-600 mb-3">Ronde ${g.current_round} · ${cards} ${cards === 1 ? 'kaart' : 'kaarten'} per speler</p>
+    <div class="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+      💡 <strong>Blinde regel:</strong> De biedingen mogen samen niet optellen tot ${cards}.
+    </div>
+    <form id="bids-form" onsubmit="return submitBids(event, ${cards})" class="space-y-3">`;
+
+  for (let i = 0; i < players.length; i++) {
+    const p = players[i];
+    const isDealer = i === dealerIdx;
+    const isFirstBidder = i === firstBidderIdx;
+    html += `<div class="flex items-center gap-2 flex-wrap">
+      <div class="flex items-center gap-2 w-44 min-w-0">
+        <span class="font-medium text-gray-700 truncate">${p.name}</span>
+        ${isDealer ? '<span class="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-semibold">🃏 Deler</span>' : ''}
+        ${isFirstBidder ? '<span class="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full font-semibold">🎯 1e bod</span>' : ''}
+      </div>
+      <input type="number" id="bid_${p.id}" min="0" max="${cards}" value="0"
+        class="w-16 px-2 py-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bid-input"
+        onchange="updateBidTotal(${cards})">
+    </div>`;
+  }
+
+  html += `<div class="mt-4 p-3 bg-gray-50 rounded-lg">
+      Totaal: <strong id="bid-total">0</strong> / ${cards}
+      <span id="bid-warning" class="text-red-600 font-semibold hidden ml-3">⚠️ Blinde regel!</span>
+    </div>
+    <button type="submit" class="mt-4 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">Biedingen bevestigen</button>
+    <div id="bids-error" class="mt-2 text-red-600 font-medium hidden"></div>
+    </form></div>`;
+  return html;
+}
+
+function updateBidTotal(cards) {
+  let total = 0;
+  document.querySelectorAll('.bid-input').forEach(i => total += parseInt(i.value) || 0);
+  document.getElementById('bid-total').textContent = total;
+  const warn = document.getElementById('bid-warning');
+  if (total === cards) { warn.classList.remove('hidden'); }
+  else { warn.classList.add('hidden'); }
+}
+
+async function submitBids(event, cards) {
+  event.preventDefault();
+  const bids = {};
+  const bidValues = [];
+  document.querySelectorAll('.bid-input').forEach(i => {
+    const pid = parseInt(i.id.replace('bid_', ''));
+    const val = parseInt(i.value) || 0;
+    bids[pid] = val;
+    bidValues.push(val);
+  });
+
+  const err = validateBids(bidValues, cards);
+  if (err) {
+    const el = document.getElementById('bids-error');
+    el.textContent = '⚠️ ' + err;
+    el.classList.remove('hidden');
+    return false;
+  }
+
+  const { game: g } = await getGame(currentGameId);
+  await saveBids(currentGameId, g.current_round, bids);
+  await updateGamePhase(currentGameId, g.current_round, 'playing');
+  await renderGameView();
+  return false;
+}
+
+function renderPlayingPhase(g, players, cards, bids) {
+  const dealerIdx = (g.current_round - 1) % players.length;
+  const firstBidderIdx = (dealerIdx + 1) % players.length;
+
+  let html = `<div class="bg-white rounded-xl shadow-lg p-6">
+    <h2 class="text-2xl font-bold text-emerald-800 mb-2">Slagen invoeren</h2>
+    <p class="text-gray-600 mb-3">Ronde ${g.current_round} · ${cards} ${cards === 1 ? 'kaart' : 'kaarten'} per speler</p>
+    <div class="overflow-x-auto"><table class="w-full">
+      <thead><tr class="border-b-2 border-emerald-200">
+        <th class="text-left py-2 px-3 font-semibold text-gray-700">Speler</th>
+        <th class="text-center py-2 px-3 font-semibold text-gray-700">Bod</th>
+        <th class="text-center py-2 px-3 font-semibold text-gray-700">Slagen</th>
+      </tr></thead><tbody>`;
+
+  for (let i = 0; i < players.length; i++) {
+    const p = players[i];
+    const isDealer = i === dealerIdx;
+    const isFirstBidder = i === firstBidderIdx;
+    html += `<tr class="border-b border-gray-100">
+      <td class="py-2 px-3 font-medium text-gray-800">
+        ${p.name}
+        ${isDealer ? '<span class="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-semibold ml-1">🃏 Deler</span>' : ''}
+        ${isFirstBidder ? '<span class="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full font-semibold ml-1">🎯 1e bod</span>' : ''}
+      </td>
+      <td class="text-center py-2 px-3"><span class="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-bold">${bids[p.id] || 0}</span></td>
+      <td class="text-center py-2 px-3">
+        <input type="number" id="tricks_${p.id}" min="0" max="${cards}" value="0"
+          class="w-16 px-2 py-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none trick-input"
+          onchange="updateTrickTotal(${cards})">
+      </td></tr>`;
+  }
+
+  html += `</tbody></table></div>
+    <div class="mt-4 p-3 bg-gray-50 rounded-lg">
+      Totaal: <strong id="trick-total">0</strong> / ${cards}
+      <span id="trick-warning" class="text-red-600 font-semibold hidden ml-3">⚠️ Totaal moet ${cards} zijn!</span>
+    </div>
+    <button onclick="submitTricks(${cards})" class="mt-4 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">Slagen bevestigen</button>
+    <div id="tricks-error" class="mt-2 text-red-600 font-medium hidden"></div></div>`;
+  return html;
+}
+
+function updateTrickTotal(cards) {
+  let total = 0;
+  document.querySelectorAll('.trick-input').forEach(i => total += parseInt(i.value) || 0);
+  document.getElementById('trick-total').textContent = total;
+  const warn = document.getElementById('trick-warning');
+  if (total !== cards) { warn.classList.remove('hidden'); }
+  else { warn.classList.add('hidden'); }
+}
+
+async function submitTricks(cards) {
+  const tricks = {};
+  const trickValues = [];
+  document.querySelectorAll('.trick-input').forEach(i => {
+    const pid = parseInt(i.id.replace('tricks_', ''));
+    const val = parseInt(i.value) || 0;
+    tricks[pid] = val;
+    trickValues.push(val);
+  });
+
+  const err = validateTricks(trickValues, cards);
+  if (err) {
+    const el = document.getElementById('tricks-error');
+    el.textContent = '⚠️ ' + err;
+    el.classList.remove('hidden');
+    return;
+  }
+
+  const { game: g } = await getGame(currentGameId);
+  await saveTricksAndScores(currentGameId, g.current_round, tricks);
+  await updateGamePhase(currentGameId, g.current_round, 'round_summary');
+  await renderGameView();
+}
+
+function renderSummaryPhase(g, players, cards, results, tRounds) {
+  let html = `<div class="bg-white rounded-xl shadow-lg p-6">
+    <h2 class="text-2xl font-bold text-emerald-800 mb-2">Resultaten ronde ${g.current_round}</h2>
+    <p class="text-gray-600 mb-3">${cards} ${cards === 1 ? 'kaart' : 'kaarten'} per speler</p>
+    <div class="overflow-x-auto"><table class="w-full">
+      <thead><tr class="border-b-2 border-emerald-200">
+        <th class="text-left py-2 px-3 font-semibold text-gray-700">Speler</th>
+        <th class="text-center py-2 px-3 font-semibold text-gray-700">Bod</th>
+        <th class="text-center py-2 px-3 font-semibold text-gray-700">Slagen</th>
+        <th class="text-center py-2 px-3 font-semibold text-gray-700">Punten</th>
+      </tr></thead><tbody>`;
+
+  for (const r of results) {
+    html += `<tr class="border-b border-gray-100 hover:bg-gray-50">
+      <td class="py-2 px-3 font-medium text-gray-800">${r.name}</td>
+      <td class="text-center py-2 px-3">${r.bid}</td>
+      <td class="text-center py-2 px-3">${r.tricks_won}</td>
+      <td class="text-center py-2 px-3 font-bold ${r.score >= 0 ? 'text-emerald-700' : 'text-red-600'}">${r.score >= 0 ? '+' : ''}${r.score}</td></tr>`;
+  }
+
+  html += `</tbody></table></div>
+    <button onclick="goNextRound()" class="mt-6 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">
+      ${g.current_round >= tRounds ? 'Bekijk eindstand' : 'Volgende ronde'}
+    </button></div>`;
+  return html;
+}
+
+function renderGameOver(sb) {
+  const results = sb.rows.map((row, i) => ({
+    position: i + 1,
+    name: row.playerName,
+    total: row.total,
+  }));
+
+  let html = `<div class="bg-white rounded-xl shadow-lg p-6 text-center">
+    <div class="text-6xl mb-4">🏆</div>
+    <h2 class="text-3xl font-bold text-emerald-800 mb-6">Spel afgelopen!</h2>
+    <div class="overflow-x-auto"><table class="w-full mx-auto max-w-md">
+      <thead><tr class="border-b-2 border-emerald-200">
+        <th class="text-center py-2 px-3 font-semibold text-gray-700">Positie</th>
+        <th class="text-left py-2 px-3 font-semibold text-gray-700">Speler</th>
+        <th class="text-center py-2 px-3 font-semibold text-gray-700">Punten</th>
+      </tr></thead><tbody>`;
+
+  for (const r of results) {
+    const medal = r.position === 1 ? '🥇' : r.position === 2 ? '🥈' : r.position === 3 ? '🥉' : r.position;
+    html += `<tr class="border-b border-gray-100 ${r.position === 1 ? 'bg-amber-50' : ''}">
+      <td class="text-center py-3 px-3">${medal}</td>
+      <td class="py-3 px-3 font-medium text-gray-800 ${r.position === 1 ? 'text-xl' : ''}">${r.name}</td>
+      <td class="text-center py-3 px-3 font-bold ${r.total >= 0 ? 'text-emerald-700' : 'text-red-600'}">${r.total}</td></tr>`;
+  }
+
+  html += `</tbody></table></div>
+    <button onclick="showPage('game-list-page');renderGameList()" class="mt-6 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">Alle spellen</button></div>`;
+  return html;
+}
+
+async function goNextRound() {
+  const { game: g } = await getGame(currentGameId);
+  const nextRound = g.current_round + 1;
+  const tRounds = totalRounds(g.numPlayers, g.direction, g.max_cards);
+
+  if (nextRound > tRounds) {
+    await updateGamePhase(currentGameId, g.current_round, 'game_over');
+  } else {
+    await updateGamePhase(currentGameId, nextRound, 'bidding');
+  }
+  await renderGameView();
+}
+
+// ── Init ──
+
+window.addEventListener('load', async () => {
+  await initDB();
+  document.getElementById('loading').classList.add('hidden');
+  await renderGameList();
+  showPage('game-list-page');
+});
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js');
+}

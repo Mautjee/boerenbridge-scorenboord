@@ -41,6 +41,7 @@ func main() {
 
 	// Routes
 	mux.HandleFunc("GET /", h.Home)
+	mux.HandleFunc("GET /offline", h.Offline)
 	mux.HandleFunc("POST /game", h.CreateGame)
 	mux.HandleFunc("GET /game/{id}", h.Game)
 	mux.HandleFunc("POST /game/{id}/bids", h.SubmitBids)
