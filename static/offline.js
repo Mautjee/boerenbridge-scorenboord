@@ -68,16 +68,14 @@ async function initDB() {
   console.log('[offline] duckdb exports:', Object.keys(duckdb).slice(0, 10));
 
   logStep('Stap 2/6: WebAssembly bundle kiezen...');
-  const JSDELIVR_BUNDLES = {
-    mvp: {
-      mainModule: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-mvp.wasm',
-      mainWorker: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-mvp.worker.js',
-    },
-    eh: {
-      mainModule: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-eh.wasm',
-      mainWorker: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-eh.worker.js',
-    },
-  };
+  // Dump platform features for debugging
+  try {
+    const features = await duckdb.getPlatformFeatures();
+    console.log('[offline] platform features:', JSON.stringify(features));
+  } catch(e) { console.log('[offline] features check failed:', e.message); }
+
+  // Use DuckDB's built-in bundle selector (handles COI detection)
+  const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
 
   let bundle;
   try {
@@ -86,7 +84,7 @@ async function initDB() {
     console.error('[offline] selectBundle failed:', e);
     throw new Error('Bundle selectie mislukt: ' + e.message);
   }
-  console.log('[offline] bundle chosen:', bundle.mainWorker ? 'worker set' : 'NO WORKER');
+  console.log('[offline] bundle:', JSON.stringify({ m: bundle.mainModule?.slice(-20), w: bundle.mainWorker?.slice(-30), pw: bundle.pthreadWorker?.slice(-30) || 'none' }));
 
   logStep('Stap 3/6: Web Worker starten...');
   let worker;

@@ -103,6 +103,9 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Offline(w http.ResponseWriter, r *http.Request) {
+	// COOP/COEP headers enable SharedArrayBuffer (required for DuckDB-WASM threads)
+	w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+	w.Header().Set("Cross-Origin-Embedder-Policy", "credentialless")
 	render(w, "offline_page", nil)
 }
 
