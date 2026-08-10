@@ -103,20 +103,33 @@ async function initDB() {
   // Show progress bar
   document.getElementById('loading-progress').classList.remove('hidden');
 
+  // Pre-check: can we reach the WASM file?
+  console.log('[offline] WASM URL:', bundle.mainModule);
+  try {
+    const test = await fetch(bundle.mainModule, { method: 'HEAD' });
+    console.log('[offline] WASM reachable:', test.status, 'size:', test.headers.get('content-length'));
+  } catch (e) {
+    console.error('[offline] WASM pre-check failed:', e);
+    throw new Error('Kan WASM bestand niet bereiken: ' + e.message + '. Oude service worker actief?');
+  }
+
   const logger = new duckdb.ConsoleLogger();
   db = new duckdb.AsyncDuckDB(logger, worker);
 
   try {
-    // 60s timeout — WASM download+compile can be slow on mobile
+    // 120s timeout for slow WiFi
     await Promise.race([
       db.instantiate(bundle.mainModule, null, (p) => {
-        if (p && p.bytesLoaded != null && p.bytesTotal != null && p.bytesTotal > 0) {
-          const pct = Math.round((p.bytesLoaded / p.bytesTotal) * 100);
+        console.log('[offline] progress raw:', JSON.stringify(p));
+        const loaded = p?.bytesLoaded ?? p?.loaded;
+        const total = p?.bytesTotal ?? p?.total;
+        if (loaded != null && total != null && total > 0) {
+          const pct = Math.round((loaded / total) * 100);
           document.getElementById('loading-bar').style.width = pct + '%';
           document.getElementById('loading-pct').textContent = pct + '%';
         }
       }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout na 60s — WASM duurt te lang. Controleer je internetverbinding.')), 60000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout na 120s — WASM duurt te lang. Controleer je internetverbinding.')), 120000)),
     ]);
     document.getElementById('loading-progress').classList.add('hidden');
   } catch (e) {
