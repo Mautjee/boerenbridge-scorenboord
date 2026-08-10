@@ -99,12 +99,16 @@ async function initDB() {
   worker.onerror = (e) => { console.error('[offline] worker error:', e); };
   console.log('[offline] worker created:', worker ? 'yes' : 'no');
 
-  logStep('Stap 4/6: DuckDB instantieren...');
+  logStep('Stap 4/6: DuckDB instantieren (30MB WASM downloaden)...');
   const logger = new duckdb.ConsoleLogger();
   db = new duckdb.AsyncDuckDB(logger, worker);
 
   try {
-    await db.instantiate(bundle.mainModule);
+    // 60s timeout — WASM download+compile can be slow on mobile
+    await Promise.race([
+      db.instantiate(bundle.mainModule),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout na 60s — WASM duurt te lang. Controleer je internetverbinding.')), 60000)),
+    ]);
   } catch (e) {
     console.error('[offline] instantiate failed:', e);
     throw new Error('Instantiatie mislukt: ' + e.message);

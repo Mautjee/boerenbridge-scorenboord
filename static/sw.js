@@ -1,4 +1,4 @@
-const CACHE = 'boerenbridge-v3';
+const CACHE = 'boerenbridge-v4';
 
 const PRECACHE = [
   '/offline',
@@ -10,9 +10,7 @@ const PRECACHE = [
   'https://unpkg.com/htmx.org@1.9.10',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser.mjs',
-  'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-mvp.wasm',
   'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-mvp.worker.js',
-  'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-eh.wasm',
   'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-eh.worker.js',
 ];
 
@@ -34,6 +32,10 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+
+  // Never cache .wasm — breaks streaming compilation on mobile
+  if (event.request.url.endsWith('.wasm')) return;
+
   event.respondWith(
     caches.match(event.request).then(cached => {
       const fetched = fetch(event.request).then(response => {
