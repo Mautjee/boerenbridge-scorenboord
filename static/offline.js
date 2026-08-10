@@ -49,17 +49,17 @@ function validateTricks(tricks, cards) {
 // ── DuckDB init ──
 
 async function initDB() {
-  const duckdb = await import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-blocking.worker.js'
-  ).then(m => m.default || m);
+  // Import the DuckDB ESM bundle directly
+  const duckdb = await import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser.mjs');
 
   const JSDELIVR_BUNDLES = {
     mvp: {
-      mainModule: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-blocking.worker.js',
-      mainWorker: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-blocking.worker.js',
+      mainModule: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-mvp.wasm',
+      mainWorker: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-mvp.worker.js',
     },
     eh: {
-      mainModule: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-eh.worker.js',
-      mainWorker: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-eh.worker.js',
+      mainModule: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-eh.wasm',
+      mainWorker: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-eh.worker.js',
     },
   };
 
@@ -718,10 +718,21 @@ async function goNextRound() {
 // ── Init ──
 
 window.addEventListener('load', async () => {
-  await initDB();
-  document.getElementById('loading').classList.add('hidden');
-  await renderGameList();
-  showPage('game-list-page');
+  try {
+    await initDB();
+    document.getElementById('loading').classList.add('hidden');
+    await renderGameList();
+    showPage('game-list-page');
+  } catch (err) {
+    const loading = document.getElementById('loading');
+    loading.innerHTML = `
+      <div class="text-red-600 text-lg font-bold mb-2">⚠️ Fout bij laden database</div>
+      <p class="text-gray-600 mb-4">${err.message || 'Onbekende fout'}</p>
+      <button onclick="location.reload()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">
+        🔄 Opnieuw proberen
+      </button>`;
+    console.error('DuckDB init error:', err);
+  }
 });
 
 // Register service worker
