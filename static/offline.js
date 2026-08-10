@@ -100,16 +100,27 @@ async function initDB() {
   console.log('[offline] worker created:', worker ? 'yes' : 'no');
 
   logStep('Stap 4/6: DuckDB instantieren (30MB WASM downloaden)...');
+  // Show progress bar
+  document.getElementById('loading-progress').classList.remove('hidden');
+
   const logger = new duckdb.ConsoleLogger();
   db = new duckdb.AsyncDuckDB(logger, worker);
 
   try {
     // 60s timeout — WASM download+compile can be slow on mobile
     await Promise.race([
-      db.instantiate(bundle.mainModule),
+      db.instantiate(bundle.mainModule, null, (p) => {
+        if (p && p.bytesLoaded != null && p.bytesTotal != null && p.bytesTotal > 0) {
+          const pct = Math.round((p.bytesLoaded / p.bytesTotal) * 100);
+          document.getElementById('loading-bar').style.width = pct + '%';
+          document.getElementById('loading-pct').textContent = pct + '%';
+        }
+      }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout na 60s — WASM duurt te lang. Controleer je internetverbinding.')), 60000)),
     ]);
+    document.getElementById('loading-progress').classList.add('hidden');
   } catch (e) {
+    document.getElementById('loading-progress').classList.add('hidden');
     console.error('[offline] instantiate failed:', e);
     throw new Error('Instantiatie mislukt: ' + e.message);
   }

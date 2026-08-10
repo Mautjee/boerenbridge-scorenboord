@@ -32,9 +32,15 @@
 
     <main class="max-w-4xl mx-auto px-4 py-6">
         <!-- Loading -->
-        <div id="loading" class="text-center py-20">
+        <div id="loading" class="text-center py-20 px-4">
             <div class="inline-block w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
             <p id="loading-step" class="mt-4 text-gray-600">Database laden...</p>
+            <div id="loading-progress" class="hidden mt-3 max-w-xs mx-auto">
+                <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div id="loading-bar" class="bg-emerald-500 h-3 rounded-full transition-all duration-300" style="width:0%"></div>
+                </div>
+                <p id="loading-pct" class="mt-1 text-xs text-gray-400">0%</p>
+            </div>
             <div id="loading-detail" class="mt-2 text-xs text-gray-400 font-mono"></div>
         </div>
 
