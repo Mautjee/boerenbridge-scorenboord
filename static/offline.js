@@ -48,10 +48,26 @@ function validateTricks(tricks, cards) {
 
 // ── DuckDB init ──
 
-async function initDB() {
-  // Import the DuckDB ESM bundle directly
-  const duckdb = await import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser.mjs');
+function logStep(msg) {
+  const el = document.getElementById('loading-step');
+  if (el) el.textContent = msg;
+  console.log('[offline]', msg);
+}
 
+async function initDB() {
+  logStep('Stap 1/6: DuckDB module importeren...');
+  console.log('[offline] importmap check:', document.querySelector('script[type="importmap"]') ? 'found' : 'MISSING');
+
+  let duckdb;
+  try {
+    duckdb = await import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser.mjs');
+  } catch (e) {
+    console.error('[offline] import failed:', e);
+    throw new Error('Import mislukt: ' + e.message);
+  }
+  console.log('[offline] duckdb exports:', Object.keys(duckdb).slice(0, 10));
+
+  logStep('Stap 2/6: WebAssembly bundle kiezen...');
   const JSDELIVR_BUNDLES = {
     mvp: {
       mainModule: 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-mvp.wasm',
@@ -63,38 +79,79 @@ async function initDB() {
     },
   };
 
-  const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
-  const worker = new Worker(bundle.mainWorker);
+  let bundle;
+  try {
+    bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+  } catch (e) {
+    console.error('[offline] selectBundle failed:', e);
+    throw new Error('Bundle selectie mislukt: ' + e.message);
+  }
+  console.log('[offline] bundle chosen:', bundle.mainWorker ? 'worker set' : 'NO WORKER');
+
+  logStep('Stap 3/6: Web Worker starten...');
+  let worker;
+  try {
+    worker = new Worker(bundle.mainWorker);
+  } catch (e) {
+    console.error('[offline] Worker creation failed:', e);
+    throw new Error('Worker aanmaken mislukt: ' + e.message);
+  }
+  worker.onerror = (e) => { console.error('[offline] worker error:', e); };
+  console.log('[offline] worker created:', worker ? 'yes' : 'no');
+
+  logStep('Stap 4/6: DuckDB instantieren...');
   const logger = new duckdb.ConsoleLogger();
   db = new duckdb.AsyncDuckDB(logger, worker);
-  await db.instantiate(bundle.mainModule);
 
-  conn = await db.connect();
-  await conn.query(`
-    CREATE TABLE IF NOT EXISTS games (
-      id INTEGER PRIMARY KEY,
-      current_round INTEGER NOT NULL DEFAULT 1,
-      phase TEXT NOT NULL DEFAULT 'bidding',
-      direction TEXT NOT NULL DEFAULT 'up_down',
-      max_cards INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
-    );
-    CREATE TABLE IF NOT EXISTS players (
-      id INTEGER PRIMARY KEY,
-      game_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      position INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS round_results (
-      id INTEGER PRIMARY KEY,
-      game_id INTEGER NOT NULL,
-      round_number INTEGER NOT NULL,
-      player_id INTEGER NOT NULL,
-      bid INTEGER,
-      tricks_won INTEGER,
-      score INTEGER
-    );
-  `);
+  try {
+    await db.instantiate(bundle.mainModule);
+  } catch (e) {
+    console.error('[offline] instantiate failed:', e);
+    throw new Error('Instantiatie mislukt: ' + e.message);
+  }
+  console.log('[offline] db instantiated');
+
+  logStep('Stap 5/6: Verbinding maken...');
+  try {
+    conn = await db.connect();
+  } catch (e) {
+    console.error('[offline] connect failed:', e);
+    throw new Error('Connectie mislukt: ' + e.message);
+  }
+  console.log('[offline] connected:', conn ? 'yes' : 'no');
+
+  logStep('Stap 6/6: Tabellen aanmaken...');
+  try {
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS games (
+        id INTEGER PRIMARY KEY,
+        current_round INTEGER NOT NULL DEFAULT 1,
+        phase TEXT NOT NULL DEFAULT 'bidding',
+        direction TEXT NOT NULL DEFAULT 'up_down',
+        max_cards INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+      );
+      CREATE TABLE IF NOT EXISTS players (
+        id INTEGER PRIMARY KEY,
+        game_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        position INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS round_results (
+        id INTEGER PRIMARY KEY,
+        game_id INTEGER NOT NULL,
+        round_number INTEGER NOT NULL,
+        player_id INTEGER NOT NULL,
+        bid INTEGER,
+        tricks_won INTEGER,
+        score INTEGER
+      );
+    `);
+  } catch (e) {
+    console.error('[offline] create tables failed:', e);
+    throw new Error('Tabellen aanmaken mislukt: ' + e.message);
+  }
+  console.log('[offline] tables ready');
 
   return true;
 }
@@ -718,20 +775,34 @@ async function goNextRound() {
 // ── Init ──
 
 window.addEventListener('load', async () => {
+  logStep('Stap 0/6: Pagina geladen, initialisatie start...');
+  console.log('[offline] load event fired');
+  console.log('[offline] navigator.onLine:', navigator.onLine);
+  console.log('[offline] userAgent:', navigator.userAgent);
+
   try {
     await initDB();
     document.getElementById('loading').classList.add('hidden');
+    console.log('[offline] DB init complete, rendering game list');
     await renderGameList();
     showPage('game-list-page');
   } catch (err) {
+    const lastStep = document.getElementById('loading-step')?.textContent || 'onbekend';
+    console.error('[offline] INIT FAILED at step:', lastStep);
+    console.error('[offline] error name:', err.name);
+    console.error('[offline] error message:', err.message);
+    console.error('[offline] error stack:', err.stack);
+
     const loading = document.getElementById('loading');
     loading.innerHTML = `
       <div class="text-red-600 text-lg font-bold mb-2">⚠️ Fout bij laden database</div>
-      <p class="text-gray-600 mb-4">${err.message || 'Onbekende fout'}</p>
+      <p class="text-gray-700 font-medium mb-1">Laatste stap: <span class="text-amber-600">${lastStep}</span></p>
+      <p class="text-gray-600 mb-1">Fout: <span class="text-red-600">${err.message || 'Onbekende fout'}</span></p>
+      <p class="text-xs text-gray-400 font-mono mb-4 max-w-md mx-auto break-all">${err.name || ''}</p>
+      <p class="text-xs text-gray-400 mb-4">📋 Open DevTools (F12) → Console voor meer details</p>
       <button onclick="location.reload()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">
         🔄 Opnieuw proberen
       </button>`;
-    console.error('DuckDB init error:', err);
   }
 });
 
