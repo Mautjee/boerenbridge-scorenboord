@@ -149,10 +149,18 @@ async function initDB() {
     pthread: bundle.pthreadWorker ? bundle.pthreadWorker.slice(-40) : 'none',
   }));
 
-  logStep('Stap 3/6: Web Worker starten...');
+  logStep('Stap 3/6: Web Worker laden als blob...');
   let worker;
   try {
-    worker = new Worker(bundle.mainWorker);
+    // Fetch worker script as blob — avoids cross-origin worker restrictions on mobile
+    const workerResp = await fetch(bundle.mainWorker);
+    assert(workerResp.ok, 'Worker script download failed: HTTP ' + workerResp.status);
+    const workerBlob = await workerResp.blob();
+    assert(workerBlob.size > 0, 'Worker blob is empty (size=0)');
+    const workerUrl = URL.createObjectURL(workerBlob);
+    console.log('[offline] worker blob:', workerBlob.size, 'bytes, type:', workerBlob.type);
+    worker = new Worker(workerUrl);
+    URL.revokeObjectURL(workerUrl); // clean up blob URL after worker starts
   } catch (e) {
     console.error('[offline] Worker creation failed:', e);
     throw new Error('Worker aanmaken mislukt: ' + e.message);
@@ -160,14 +168,27 @@ async function initDB() {
   assert(worker, 'worker is null na constructie');
   assert(worker instanceof Worker, 'worker is geen Worker instance');
   worker.onerror = (e) => {
-    console.error('[offline] worker runtime error:', e.message, e.filename, e.lineno);
+    // Dump everything — mobile browsers often leave properties undefined
+    console.error('[offline] worker error event:', {
+      message: e.message,
+      filename: e.filename,
+      lineno: e.lineno,
+      colno: e.colno,
+      error: e.error ? (e.error.message || String(e.error)) : 'no error object',
+      type: e.type,
+      keys: Object.keys(e),
+    });
     showError(`
       <div class="text-red-600 text-lg font-bold mb-2">⚠️ Worker fout</div>
-      <p class="text-gray-600 mb-1">${e.message}</p>
-      <p class="text-xs text-gray-400">${e.filename}:${e.lineno}</p>
+      <p class="text-gray-600 mb-1">${e.message || '(geen bericht — zie console)'}</p>
+      <p class="text-xs text-gray-400 mb-1">${e.filename || '?'}:${e.lineno || '?'}</p>
+      <p class="text-xs text-gray-500 font-mono break-all">${e.error ? (e.error.message || String(e.error)) : ''}</p>
       <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">🔄 Opnieuw proberen</button>`);
   };
-  console.log('[offline] worker OK');
+  worker.onmessageerror = (e) => {
+    console.error('[offline] worker messageerror:', e);
+  };
+  console.log('[offline] worker OK (blob loaded)');
 
   logStep('Stap 4/6: WASM bereikbaarheid checken...');
   const progressEl = assertEl('loading-progress');
