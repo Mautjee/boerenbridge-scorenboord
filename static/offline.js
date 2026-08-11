@@ -304,6 +304,13 @@ async function initDB() {
 // ── DB helpers ──
 
 async function createGame(playerNames, direction, maxCards) {
+  assert(Array.isArray(playerNames), 'playerNames moet array zijn');
+  assert(playerNames.length >= 2, 'minimaal 2 spelers nodig, kreeg: ' + playerNames.length);
+  assert(playerNames.length <= 8, 'maximaal 8 spelers, kreeg: ' + playerNames.length);
+  assert(direction === 'up_down' || direction === 'up_only', 'ongeldige richting: ' + direction);
+  assert(typeof maxCards === 'number' && maxCards >= 0, 'ongeldige maxCards: ' + maxCards);
+  assert(conn, 'conn is niet beschikbaar voor createGame');
+
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
   const result = await conn.query(
     `INSERT INTO games (direction, max_cards, created_at) VALUES ('${direction}', ${maxCards}, '${now}') RETURNING id`
@@ -318,44 +325,72 @@ async function createGame(playerNames, direction, maxCards) {
       `INSERT INTO players (game_id, name, position) VALUES (${gameId}, '${playerNames[i].replace(/'/g, "''")}', ${i})`
     );
   }
+
+  // Verify game was fully created
+  const verify = await getGame(gameId);
+  assert(verify !== null, 'game niet teruggevonden na creatie (id=' + gameId + ')');
+  assert(verify.players.length === playerNames.length, 'spelers-aantal mismatch: ' + verify.players.length + ' vs ' + playerNames.length);
+  console.log('[offline] game ' + gameId + ' aangemaakt met ' + playerNames.length + ' spelers');
   return gameId;
 }
 
 async function getGame(gameId) {
+  assert(typeof gameId === 'number' && gameId > 0, 'ongeldige gameId: ' + gameId);
+  assert(conn, 'conn niet beschikbaar');
   const rows = (await conn.query(`SELECT * FROM games WHERE id = ${gameId}`)).toArray();
   if (!rows.length) return null;
   const g = rows[0];
+  assert(g.id === gameId, 'game id mismatch: ' + g.id + ' vs ' + gameId);
   const players = (await conn.query(`SELECT * FROM players WHERE game_id = ${gameId} ORDER BY position`)).toArray();
   g.numPlayers = players.length;
+  assert(g.numPlayers >= 2, 'minder dan 2 spelers voor game ' + gameId);
   return { game: g, players };
 }
 
 async function updateGamePhase(gameId, round, phase) {
+  assert(typeof gameId === 'number' && gameId > 0, 'ongeldige gameId');
+  assert(typeof round === 'number' && round > 0, 'ongeldige ronde: ' + round);
+  assert(['bidding', 'playing', 'round_summary', 'game_over'].includes(phase), 'ongeldige fase: ' + phase);
   await conn.query(`UPDATE games SET current_round = ${round}, phase = '${phase}' WHERE id = ${gameId}`);
+  console.log('[offline] game ' + gameId + ' fase: ' + phase + ' ronde: ' + round);
 }
 
 async function saveBids(gameId, round, bids) {
+  assert(typeof gameId === 'number', 'ongeldige gameId');
+  assert(typeof round === 'number', 'ongeldige ronde');
+  assert(typeof bids === 'object' && Object.keys(bids).length >= 2, 'bids moet object met >=2 entries zijn');
   for (const [playerId, bid] of Object.entries(bids)) {
+    assert(typeof bid === 'number' && bid >= 0, 'ongeldig bod voor speler ' + playerId + ': ' + bid);
     await conn.query(
       `INSERT INTO round_results (game_id, round_number, player_id, bid) VALUES (${gameId}, ${round}, ${playerId}, ${bid})`
     );
   }
+  console.log('[offline] bids opgeslagen voor game ' + gameId + ' ronde ' + round);
 }
 
 async function saveTricksAndScores(gameId, round, tricks) {
+  assert(typeof gameId === 'number', 'ongeldige gameId');
+  assert(typeof round === 'number', 'ongeldige ronde');
+  assert(typeof tricks === 'object', 'tricks moet object zijn');
   for (const [playerId, trick] of Object.entries(tricks)) {
+    assert(typeof trick === 'number' && trick >= 0, 'ongeldige tricks voor speler ' + playerId);
     const rows = (await conn.query(
       `SELECT bid FROM round_results WHERE game_id = ${gameId} AND round_number = ${round} AND player_id = ${playerId}`
     )).toArray();
+    assert(rows.length > 0, 'geen bid gevonden voor speler ' + playerId + ' ronde ' + round);
     const bid = rows[0].bid;
+    assert(typeof bid === 'number', 'bid is geen nummer voor speler ' + playerId);
     const score = calculateScore(bid, trick);
+    assert(typeof score === 'number', 'score is NaN voor speler ' + playerId);
     await conn.query(
       `UPDATE round_results SET tricks_won = ${trick}, score = ${score} WHERE game_id = ${gameId} AND round_number = ${round} AND player_id = ${playerId}`
     );
   }
+  console.log('[offline] tricks opgeslagen voor game ' + gameId + ' ronde ' + round);
 }
 
 async function getAllResults(gameId) {
+  assert(typeof gameId === 'number', 'ongeldige gameId');
   const rows = (await conn.query(
     `SELECT rr.round_number, rr.player_id, p.name as player_name, rr.bid, rr.tricks_won, rr.score
      FROM round_results rr JOIN players p ON rr.player_id = p.id
@@ -453,8 +488,11 @@ function showPage(id) {
 // ── Page: Game list ──
 
 async function renderGameList() {
+  assert(conn, 'conn niet beschikbaar voor renderGameList');
   const container = document.getElementById('game-list-content');
+  assert(container, 'game-list-content element niet gevonden');
   const games = (await conn.query(`SELECT * FROM games ORDER BY id DESC`)).toArray();
+  console.log('[offline] game list: ' + games.length + ' spellen');
   const playerCounts = {};
 
   for (const g of games) {
@@ -547,17 +585,22 @@ async function startOfflineGame() {
 // ── Page: Game ──
 
 async function loadGame(gameId) {
+  assert(typeof gameId === 'number' && gameId > 0, 'ongeldige gameId in loadGame: ' + gameId);
   currentGameId = gameId;
   showPage('game-page');
   await renderGameView();
 }
 
 async function renderGameView() {
-  const { game: g, players } = await getGame(currentGameId);
-  if (!g) { showPage('game-list-page'); return; }
+  assert(currentGameId > 0, 'currentGameId niet gezet');
+  const data = await getGame(currentGameId);
+  assert(data !== null, 'game ' + currentGameId + ' niet gevonden');
+  const { game: g, players } = data;
 
   const tRounds = totalRounds(g.numPlayers, g.direction, g.max_cards);
+  assert(tRounds > 0, 'tRounds is 0 voor game ' + currentGameId);
   const cards = cardsForRound(g.current_round, g.numPlayers, g.direction, g.max_cards);
+  assert(cards > 0, 'cards is 0 voor ronde ' + g.current_round);
   const roundsLeft = g.phase !== 'game_over' ? tRounds - g.current_round + 1 : 0;
 
   // Header
@@ -758,6 +801,9 @@ function updateBidTotal(cards) {
 
 async function submitBids(event, cards) {
   event.preventDefault();
+  assert(typeof cards === 'number' && cards > 0, 'ongeldig aantal kaarten: ' + cards);
+  assert(currentGameId > 0, 'currentGameId niet gezet');
+
   const bids = {};
   const bidValues = [];
   document.querySelectorAll('.bid-input').forEach(i => {
@@ -766,6 +812,8 @@ async function submitBids(event, cards) {
     bids[pid] = val;
     bidValues.push(val);
   });
+  assert(Object.keys(bids).length >= 2, 'minder dan 2 biedingen verzameld');
+  assert(bidValues.length === Object.keys(bids).length, 'bid arrays mismatch');
 
   const err = validateBids(bidValues, cards);
   if (err) {
@@ -776,6 +824,8 @@ async function submitBids(event, cards) {
   }
 
   const { game: g } = await getGame(currentGameId);
+  assert(g, 'game ' + currentGameId + ' niet gevonden bij submitBids');
+  assert(g.phase === 'bidding', 'verwachte fase bidding, kreeg: ' + g.phase);
   await saveBids(currentGameId, g.current_round, bids);
   await updateGamePhase(currentGameId, g.current_round, 'playing');
   await renderGameView();
@@ -834,6 +884,9 @@ function updateTrickTotal(cards) {
 }
 
 async function submitTricks(cards) {
+  assert(typeof cards === 'number' && cards > 0, 'ongeldig aantal kaarten: ' + cards);
+  assert(currentGameId > 0, 'currentGameId niet gezet');
+
   const tricks = {};
   const trickValues = [];
   document.querySelectorAll('.trick-input').forEach(i => {
@@ -842,6 +895,7 @@ async function submitTricks(cards) {
     tricks[pid] = val;
     trickValues.push(val);
   });
+  assert(Object.keys(tricks).length >= 2, 'minder dan 2 tricks verzameld');
 
   const err = validateTricks(trickValues, cards);
   if (err) {
@@ -852,6 +906,8 @@ async function submitTricks(cards) {
   }
 
   const { game: g } = await getGame(currentGameId);
+  assert(g, 'game ' + currentGameId + ' niet gevonden bij submitTricks');
+  assert(g.phase === 'playing', 'verwachte fase playing, kreeg: ' + g.phase);
   await saveTricksAndScores(currentGameId, g.current_round, tricks);
   await updateGamePhase(currentGameId, g.current_round, 'round_summary');
   await renderGameView();
@@ -915,9 +971,13 @@ function renderGameOver(sb) {
 }
 
 async function goNextRound() {
-  const { game: g } = await getGame(currentGameId);
+  assert(currentGameId > 0, 'currentGameId niet gezet');
+  const data = await getGame(currentGameId);
+  assert(data !== null, 'game niet gevonden bij goNextRound');
+  const { game: g } = data;
   const nextRound = g.current_round + 1;
   const tRounds = totalRounds(g.numPlayers, g.direction, g.max_cards);
+  assert(tRounds > 0, 'tRounds is 0');
 
   if (nextRound > tRounds) {
     await updateGamePhase(currentGameId, g.current_round, 'game_over');
