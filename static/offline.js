@@ -255,10 +255,15 @@ async function initDB() {
   assert(typeof conn.query === 'function', 'conn.query is geen function');
   console.log('[offline] connectie OK');
 
-  logStep('Stap 6/6: Tabel 1/3 (games)...');
+  logStep('Stap 6/6: Tabellen opnieuw aanmaken...');
   try {
-    await conn.query(`CREATE TABLE IF NOT EXISTS games (
-      id INTEGER PRIMARY KEY,
+    // Drop old tables (no data yet — safe)
+    await conn.query('DROP TABLE IF EXISTS round_results');
+    await conn.query('DROP TABLE IF EXISTS players');
+    await conn.query('DROP TABLE IF EXISTS games');
+
+    await conn.query(`CREATE TABLE games (
+      id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
       current_round INTEGER NOT NULL DEFAULT 1,
       phase TEXT NOT NULL DEFAULT 'bidding',
       direction TEXT NOT NULL DEFAULT 'up_down',
@@ -266,27 +271,17 @@ async function initDB() {
       created_at TEXT
     )`);
     console.log('[offline] games table OK');
-  } catch (e) {
-    throw new Error('Tabel games: ' + e.message);
-  }
 
-  logStep('Stap 6/6: Tabel 2/3 (players)...');
-  try {
-    await conn.query(`CREATE TABLE IF NOT EXISTS players (
-      id INTEGER PRIMARY KEY,
+    await conn.query(`CREATE TABLE players (
+      id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
       game_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       position INTEGER NOT NULL
     )`);
     console.log('[offline] players table OK');
-  } catch (e) {
-    throw new Error('Tabel players: ' + e.message);
-  }
 
-  logStep('Stap 6/6: Tabel 3/3 (round_results)...');
-  try {
-    await conn.query(`CREATE TABLE IF NOT EXISTS round_results (
-      id INTEGER PRIMARY KEY,
+    await conn.query(`CREATE TABLE round_results (
+      id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
       game_id INTEGER NOT NULL,
       round_number INTEGER NOT NULL,
       player_id INTEGER NOT NULL,
@@ -296,7 +291,7 @@ async function initDB() {
     )`);
     console.log('[offline] round_results table OK');
   } catch (e) {
-    throw new Error('Tabel round_results: ' + e.message);
+    throw new Error('Tabellen aanmaken mislukt: ' + e.message);
   }
 
   // Verify
@@ -310,9 +305,13 @@ async function initDB() {
 
 async function createGame(playerNames, direction, maxCards) {
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  await conn.query(`INSERT INTO games (direction, max_cards, created_at) VALUES ('${direction}', ${maxCards}, '${now}')`);
-  const gameRows = await conn.query(`SELECT last_insert_rowid() as id`);
-  const gameId = Number(gameRows.toArray()[0].id);
+  const result = await conn.query(
+    `INSERT INTO games (direction, max_cards, created_at) VALUES ('${direction}', ${maxCards}, '${now}') RETURNING id`
+  );
+  const rows = result.toArray();
+  assert(rows.length > 0, 'INSERT RETURNING gaf geen rijen terug');
+  const gameId = Number(rows[0].id);
+  assert(gameId > 0, 'gameId is ongeldig: ' + gameId);
 
   for (let i = 0; i < playerNames.length; i++) {
     await conn.query(
@@ -529,15 +528,20 @@ function refreshOfflineSettings() {
 }
 
 async function startOfflineGame() {
-  const names = [];
-  document.querySelectorAll('#offline-player-inputs input[type="text"]').forEach(i => names.push(i.value.trim()));
-  if (names.length < 2) { alert('Minimaal 2 spelers vereist.'); return; }
-  const direction = document.querySelector('input[name="offline_direction"]:checked').value;
-  let maxCards = parseInt(document.getElementById('offline_max_cards').value) || 0;
-  if (maxCards === 0) maxCards = Math.floor(52 / names.length);
+  try {
+    const names = [];
+    document.querySelectorAll('#offline-player-inputs input[type="text"]').forEach(i => names.push(i.value.trim()));
+    if (names.length < 2) { alert('Minimaal 2 spelers vereist.'); return; }
+    const direction = document.querySelector('input[name="offline_direction"]:checked').value;
+    let maxCards = parseInt(document.getElementById('offline_max_cards').value) || 0;
+    if (maxCards === 0) maxCards = Math.floor(52 / names.length);
 
-  const gameId = await createGame(names, direction, maxCards);
-  await loadGame(gameId);
+    const gameId = await createGame(names, direction, maxCards);
+    await loadGame(gameId);
+  } catch(e) {
+    console.error('[offline] startOfflineGame error:', e);
+    alert('Fout bij starten spel: ' + e.message);
+  }
 }
 
 // ── Page: Game ──
