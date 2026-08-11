@@ -598,9 +598,10 @@ async function startOfflineGame() {
 
     const gameId = await createGame(names, direction, maxCards);
     console.log('[offline] game created, id:', gameId);
-    // Verify immediately
     const check = await getGame(gameId);
-    console.log('[offline] verify after create: numPlayers:', check?.game?.numPlayers, 'players:', check?.players?.length);
+    const debugInfo = 'Game #' + gameId + ' | Spelers: ' + check.players.length + ' | Richting: ' + direction + ' | MaxKaarten: ' + maxCards + ' | tRounds: ' + totalRounds(check.game.numPlayers, direction, maxCards);
+    console.log('[offline] verify:', debugInfo);
+    alert('✅ Game aangemaakt!\n' + debugInfo);
     await loadGame(gameId);
   } catch(e) {
     console.error('[offline] startOfflineGame error:', e);
@@ -627,10 +628,8 @@ async function renderGameView() {
   console.log('[offline] renderGameView game', currentGameId, 'players:', g.numPlayers, 'tRounds:', tRounds, 'phase:', g.phase);
   if (tRounds === 0) {
     console.error('[offline] tRounds is 0! g:', JSON.stringify({ numPlayers: g.numPlayers, direction: g.direction, maxCards: g.maxCards }));
-    // Auto-delete corrupted game
-    await conn.query(`DELETE FROM players WHERE game_id = ${currentGameId}`);
-    await conn.query(`DELETE FROM games WHERE id = ${currentGameId}`);
-    console.log('[offline] corrupted game', currentGameId, 'deleted');
+    alert('⚠️ tRounds is 0!\nSpelers: ' + g.numPlayers + '\nRichting: ' + g.direction + '\nMaxKaarten: ' + g.maxCards);
+    // Don't auto-delete — preserve for debugging
     showPage('game-list-page');
     await renderGameList();
     return;
