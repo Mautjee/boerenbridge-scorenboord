@@ -9,9 +9,14 @@ const PRECACHE = [
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/htmx.org@1.9.10',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
+  // DuckDB-WASM — cache all components for offline use (~30MB total)
   'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser.mjs',
   'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-mvp.worker.js',
   'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser-eh.worker.js',
+  'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-mvp.wasm',
+  'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-eh.wasm',
+  // Apache Arrow (duckdb dependency)
+  'https://cdn.jsdelivr.net/npm/apache-arrow@17.0.0/+esm',
 ];
 
 self.addEventListener('install', event => {

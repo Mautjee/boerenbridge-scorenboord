@@ -263,7 +263,7 @@ async function initDB() {
     await conn.query('DROP TABLE IF EXISTS games');
 
     await conn.query(`CREATE TABLE games (
-      id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+      id INTEGER PRIMARY KEY,
       current_round INTEGER NOT NULL DEFAULT 1,
       phase TEXT NOT NULL DEFAULT 'bidding',
       direction TEXT NOT NULL DEFAULT 'up_down',
@@ -273,7 +273,7 @@ async function initDB() {
     console.log('[offline] games table OK');
 
     await conn.query(`CREATE TABLE players (
-      id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+      id INTEGER PRIMARY KEY,
       game_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       position INTEGER NOT NULL
@@ -281,7 +281,7 @@ async function initDB() {
     console.log('[offline] players table OK');
 
     await conn.query(`CREATE TABLE round_results (
-      id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+      id INTEGER PRIMARY KEY,
       game_id INTEGER NOT NULL,
       round_number INTEGER NOT NULL,
       player_id INTEGER NOT NULL,
@@ -312,12 +312,13 @@ async function createGame(playerNames, direction, maxCards) {
   assert(conn, 'conn is niet beschikbaar voor createGame');
 
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  const result = await conn.query(
-    `INSERT INTO games (direction, max_cards, created_at) VALUES ('${direction}', ${maxCards}, '${now}') RETURNING id`
+  // DuckDB INTEGER PRIMARY KEY doesn't auto-increment — generate ID manually
+  const maxId = (await conn.query(`SELECT COALESCE(MAX(id), 0) as mx FROM games`)).toArray();
+  const nextId = Number(maxId[0].mx) + 1;
+  await conn.query(
+    `INSERT INTO games (id, direction, max_cards, created_at) VALUES (${nextId}, '${direction}', ${maxCards}, '${now}')`
   );
-  const rows = result.toArray();
-  assert(rows.length > 0, 'INSERT RETURNING gaf geen rijen terug');
-  const gameId = Number(rows[0].id);
+  const gameId = nextId;
   assert(gameId > 0, 'gameId is ongeldig: ' + gameId);
 
   for (let i = 0; i < playerNames.length; i++) {
