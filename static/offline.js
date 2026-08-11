@@ -616,9 +616,18 @@ async function renderGameView() {
   const { game: g, players } = data;
 
   const tRounds = totalRounds(g.numPlayers, g.direction, g.max_cards);
-  assert(tRounds > 0, 'tRounds is 0 voor game ' + currentGameId);
+  console.log('[offline] renderGameView game', currentGameId, 'players:', g.numPlayers, 'tRounds:', tRounds, 'phase:', g.phase);
+  if (tRounds === 0) {
+    console.error('[offline] tRounds is 0! g:', JSON.stringify({ numPlayers: g.numPlayers, direction: g.direction, maxCards: g.maxCards }));
+    // Auto-delete corrupted game
+    await conn.query(`DELETE FROM players WHERE game_id = ${currentGameId}`);
+    await conn.query(`DELETE FROM games WHERE id = ${currentGameId}`);
+    console.log('[offline] corrupted game', currentGameId, 'deleted');
+    showPage('game-list-page');
+    await renderGameList();
+    return;
+  }
   const cards = cardsForRound(g.current_round, g.numPlayers, g.direction, g.max_cards);
-  assert(cards > 0, 'cards is 0 voor ronde ' + g.current_round);
   const roundsLeft = g.phase !== 'game_over' ? tRounds - g.current_round + 1 : 0;
 
   // Header
