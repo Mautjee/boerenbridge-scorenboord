@@ -322,8 +322,10 @@ async function createGame(playerNames, direction, maxCards) {
   assert(gameId > 0, 'gameId is ongeldig: ' + gameId);
 
   for (let i = 0; i < playerNames.length; i++) {
+    const maxPId = (await conn.query(`SELECT COALESCE(MAX(id), 0) as mx FROM players`)).toArray();
+    const nextPId = Number(maxPId[0].mx) + 1;
     await conn.query(
-      `INSERT INTO players (game_id, name, position) VALUES (${gameId}, '${playerNames[i].replace(/'/g, "''")}', ${i})`
+      `INSERT INTO players (id, game_id, name, position) VALUES (${nextPId}, ${gameId}, '${playerNames[i].replace(/'/g, "''")}', ${i})`
     );
   }
 
@@ -362,8 +364,10 @@ async function saveBids(gameId, round, bids) {
   assert(typeof bids === 'object' && Object.keys(bids).length >= 2, 'bids moet object met >=2 entries zijn');
   for (const [playerId, bid] of Object.entries(bids)) {
     assert(typeof bid === 'number' && bid >= 0, 'ongeldig bod voor speler ' + playerId + ': ' + bid);
+    const maxRId = (await conn.query(`SELECT COALESCE(MAX(id), 0) as mx FROM round_results`)).toArray();
+    const nextRId = Number(maxRId[0].mx) + 1;
     await conn.query(
-      `INSERT INTO round_results (game_id, round_number, player_id, bid) VALUES (${gameId}, ${round}, ${playerId}, ${bid})`
+      `INSERT INTO round_results (id, game_id, round_number, player_id, bid) VALUES (${nextRId}, ${gameId}, ${round}, ${playerId}, ${bid})`
     );
   }
   console.log('[offline] bids opgeslagen voor game ' + gameId + ' ronde ' + round);
