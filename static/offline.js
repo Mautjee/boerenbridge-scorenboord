@@ -322,17 +322,30 @@ async function createGame(playerNames, direction, maxCards) {
   assert(gameId > 0, 'gameId is ongeldig: ' + gameId);
 
   for (let i = 0; i < playerNames.length; i++) {
+    const name = playerNames[i];
+    assert(name && name.trim(), 'speler naam ' + i + ' is leeg');
+    const sanitized = name.replace(/'/g, "''");
     const maxPId = (await conn.query(`SELECT COALESCE(MAX(id), 0) as mx FROM players`)).toArray();
     const nextPId = Number(maxPId[0].mx) + 1;
-    await conn.query(
-      `INSERT INTO players (id, game_id, name, position) VALUES (${nextPId}, ${gameId}, '${playerNames[i].replace(/'/g, "''")}', ${i})`
-    );
+    console.log('[offline] inserting player', i, 'id:', nextPId, 'name:', sanitized);
+    try {
+      await conn.query(
+        `INSERT INTO players (id, game_id, name, position) VALUES (${nextPId}, ${gameId}, '${sanitized}', ${i})`
+      );
+    } catch(e) {
+      throw new Error('Speler ' + i + ' (' + sanitized + ') invoegen mislukt: ' + e.message);
+    }
   }
 
   // Verify game was fully created
   const verify = await getGame(gameId);
   assert(verify !== null, 'game niet teruggevonden na creatie (id=' + gameId + ')');
-  assert(verify.players.length === playerNames.length, 'spelers-aantal mismatch: ' + verify.players.length + ' vs ' + playerNames.length);
+  if (verify.players.length !== playerNames.length) {
+    // Dump players table for debugging
+    const allPlayers = (await conn.query('SELECT * FROM players')).toArray();
+    console.error('[offline] ALL players in DB:', JSON.stringify(allPlayers));
+    throw new Error('spelers-aantal mismatch: ' + verify.players.length + ' in DB vs ' + playerNames.length + ' verwacht (gameId=' + gameId + ')');
+  }
   console.log('[offline] game ' + gameId + ' aangemaakt met ' + playerNames.length + ' spelers');
   return gameId;
 }
@@ -346,7 +359,7 @@ async function getGame(gameId) {
   assert(g.id === gameId, 'game id mismatch: ' + g.id + ' vs ' + gameId);
   const players = (await conn.query(`SELECT * FROM players WHERE game_id = ${gameId} ORDER BY position`)).toArray();
   g.numPlayers = players.length;
-  assert(g.numPlayers >= 2, 'minder dan 2 spelers voor game ' + gameId);
+  console.log('[offline] getGame', gameId, 'players:', g.numPlayers, 'phase:', g.phase);
   return { game: g, players };
 }
 
