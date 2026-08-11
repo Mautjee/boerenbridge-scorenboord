@@ -255,42 +255,53 @@ async function initDB() {
   assert(typeof conn.query === 'function', 'conn.query is geen function');
   console.log('[offline] connectie OK');
 
-  logStep('Stap 6/6: Tabellen aanmaken...');
+  logStep('Stap 6/6: Tabel 1/3 (games)...');
   try {
-    await conn.query(`
-      CREATE TABLE IF NOT EXISTS games (
-        id INTEGER PRIMARY KEY,
-        current_round INTEGER NOT NULL DEFAULT 1,
-        phase TEXT NOT NULL DEFAULT 'bidding',
-        direction TEXT NOT NULL DEFAULT 'up_down',
-        max_cards INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT DEFAULT (CAST(CURRENT_TIMESTAMP AS VARCHAR))
-      );
-      CREATE TABLE IF NOT EXISTS players (
-        id INTEGER PRIMARY KEY,
-        game_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        position INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS round_results (
-        id INTEGER PRIMARY KEY,
-        game_id INTEGER NOT NULL,
-        round_number INTEGER NOT NULL,
-        player_id INTEGER NOT NULL,
-        bid INTEGER,
-        tricks_won INTEGER,
-        score INTEGER
-      );
-    `);
+    await conn.query(`CREATE TABLE IF NOT EXISTS games (
+      id INTEGER PRIMARY KEY,
+      current_round INTEGER NOT NULL DEFAULT 1,
+      phase TEXT NOT NULL DEFAULT 'bidding',
+      direction TEXT NOT NULL DEFAULT 'up_down',
+      max_cards INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT
+    )`);
+    console.log('[offline] games table OK');
   } catch (e) {
-    console.error('[offline] create tables failed:', e);
-    throw new Error('Tabellen aanmaken mislukt: ' + e.message);
+    throw new Error('Tabel games: ' + e.message);
   }
-  console.log('[offline] tabellen OK');
 
-  // Verify tables exist
+  logStep('Stap 6/6: Tabel 2/3 (players)...');
+  try {
+    await conn.query(`CREATE TABLE IF NOT EXISTS players (
+      id INTEGER PRIMARY KEY,
+      game_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      position INTEGER NOT NULL
+    )`);
+    console.log('[offline] players table OK');
+  } catch (e) {
+    throw new Error('Tabel players: ' + e.message);
+  }
+
+  logStep('Stap 6/6: Tabel 3/3 (round_results)...');
+  try {
+    await conn.query(`CREATE TABLE IF NOT EXISTS round_results (
+      id INTEGER PRIMARY KEY,
+      game_id INTEGER NOT NULL,
+      round_number INTEGER NOT NULL,
+      player_id INTEGER NOT NULL,
+      bid INTEGER,
+      tricks_won INTEGER,
+      score INTEGER
+    )`);
+    console.log('[offline] round_results table OK');
+  } catch (e) {
+    throw new Error('Tabel round_results: ' + e.message);
+  }
+
+  // Verify
   const gameCount = (await conn.query('SELECT COUNT(*) as c FROM games')).toArray();
-  console.log('[offline] games table has', gameCount[0]?.c ?? '?', 'rows');
+  console.log('[offline] tabellen OK, games:', gameCount[0]?.c ?? '?');
 
   return true;
 }
@@ -298,7 +309,8 @@ async function initDB() {
 // ── DB helpers ──
 
 async function createGame(playerNames, direction, maxCards) {
-  await conn.query(`INSERT INTO games (direction, max_cards) VALUES ('${direction}', ${maxCards})`);
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  await conn.query(`INSERT INTO games (direction, max_cards, created_at) VALUES ('${direction}', ${maxCards}, '${now}')`);
   const gameRows = await conn.query(`SELECT last_insert_rowid() as id`);
   const gameId = Number(gameRows.toArray()[0].id);
 

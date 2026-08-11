@@ -1,4 +1,4 @@
-const CACHE = 'boerenbridge-v4';
+const CACHE = 'boerenbridge-v5';
 
 const PRECACHE = [
   '/offline',
