@@ -587,12 +587,20 @@ async function startOfflineGame() {
   try {
     const names = [];
     document.querySelectorAll('#offline-player-inputs input[type="text"]').forEach(i => names.push(i.value.trim()));
+    console.log('[offline] startOfflineGame names:', JSON.stringify(names));
     if (names.length < 2) { alert('Minimaal 2 spelers vereist.'); return; }
-    const direction = document.querySelector('input[name="offline_direction"]:checked').value;
-    let maxCards = parseInt(document.getElementById('offline_max_cards').value) || 0;
+    const directionEl = document.querySelector('input[name="offline_direction"]:checked');
+    const direction = directionEl ? directionEl.value : 'up_down';
+    const maxCardsEl = document.getElementById('offline_max_cards');
+    let maxCards = maxCardsEl ? (parseInt(maxCardsEl.value) || 0) : 0;
     if (maxCards === 0) maxCards = Math.floor(52 / names.length);
+    console.log('[offline] startOfflineGame direction:', direction, 'maxCards:', maxCards);
 
     const gameId = await createGame(names, direction, maxCards);
+    console.log('[offline] game created, id:', gameId);
+    // Verify immediately
+    const check = await getGame(gameId);
+    console.log('[offline] verify after create: numPlayers:', check?.game?.numPlayers, 'players:', check?.players?.length);
     await loadGame(gameId);
   } catch(e) {
     console.error('[offline] startOfflineGame error:', e);
