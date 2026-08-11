@@ -47,6 +47,21 @@ function validateTricks(tricks, cards) {
 }
 
 // ── DuckDB init ──
+let initTimer = null;
+
+function assert(condition, msg) {
+  if (!condition) {
+    const err = new Error('ASSERT: ' + msg);
+    console.error('[offline]', err.message);
+    throw err;
+  }
+}
+
+function assertEl(id, msg) {
+  const el = document.getElementById(id);
+  assert(el, msg || 'Element #' + id + ' niet gevonden in DOM');
+  return el;
+}
 
 function logStep(msg) {
   const el = document.getElementById('loading-step');
@@ -54,9 +69,30 @@ function logStep(msg) {
   console.log('[offline]', msg);
 }
 
+function showError(html) {
+  const loading = assertEl('loading', 'loading div niet gevonden');
+  loading.innerHTML = html;
+}
+
 async function initDB() {
+  logStep('Stap 0/6: Asserties controleren...');
+  assertEl('loading');
+  assertEl('loading-step');
+  assertEl('loading-progress');
+  assertEl('loading-bar');
+  assertEl('loading-pct');
+  assertEl('game-list-page');
+  assertEl('game-page');
+  assertEl('new-game-page');
+  assert(typeof fetch === 'function', 'fetch API niet beschikbaar');
+  assert(typeof Worker !== 'undefined', 'Web Workers niet beschikbaar');
+  assert(typeof WebAssembly !== 'undefined', 'WebAssembly niet beschikbaar');
+  console.log('[offline] alle DOM asserts OK');
+
   logStep('Stap 1/6: DuckDB module importeren...');
-  console.log('[offline] importmap check:', document.querySelector('script[type="importmap"]') ? 'found' : 'MISSING');
+  const importMap = document.querySelector('script[type="importmap"]');
+  assert(importMap, 'importmap script tag niet gevonden! apache-arrow kan niet resolved worden.');
+  console.log('[offline] importmap:', importMap.textContent.replace(/\s+/g, ' ').slice(0, 120));
 
   let duckdb;
   try {
@@ -65,26 +101,53 @@ async function initDB() {
     console.error('[offline] import failed:', e);
     throw new Error('Import mislukt: ' + e.message);
   }
-  console.log('[offline] duckdb exports:', Object.keys(duckdb).slice(0, 10));
+  assert(duckdb, 'duckdb module is null na import');
+  assert(typeof duckdb === 'object', 'duckdb is geen object: ' + typeof duckdb);
+  assert(typeof duckdb.AsyncDuckDB === 'function', 'AsyncDuckDB ontbreekt in duckdb module');
+  assert(typeof duckdb.selectBundle === 'function', 'selectBundle ontbreekt in duckdb module');
+  assert(typeof duckdb.getJsDelivrBundles === 'function', 'getJsDelivrBundles ontbreekt in duckdb module');
+  assert(typeof duckdb.ConsoleLogger === 'function', 'ConsoleLogger ontbreekt in duckdb module');
+  assert(typeof duckdb.getPlatformFeatures === 'function', 'getPlatformFeatures ontbreekt in duckdb module');
+  const exports = Object.keys(duckdb);
+  console.log('[offline] duckdb exports (' + exports.length + '):', exports.slice(0, 10));
 
-  logStep('Stap 2/6: WebAssembly bundle kiezen...');
-  // Dump platform features for debugging
+  logStep('Stap 2/6: Platform features + bundle kiezen...');
+  let features;
   try {
-    const features = await duckdb.getPlatformFeatures();
-    console.log('[offline] platform features:', JSON.stringify(features));
-  } catch(e) { console.log('[offline] features check failed:', e.message); }
+    features = await duckdb.getPlatformFeatures();
+    assert(features, 'getPlatformFeatures returned null/undefined');
+    assert(typeof features === 'object', 'features is geen object');
+  } catch(e) {
+    console.error('[offline] features check failed:', e);
+    throw new Error('Platform feature check mislukt: ' + e.message);
+  }
+  console.log('[offline] platform:', JSON.stringify(features));
 
-  // Use DuckDB's built-in bundle selector (handles COI detection)
-  const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
+  const bundles = duckdb.getJsDelivrBundles();
+  assert(bundles, 'getJsDelivrBundles returned null');
+  assert(bundles.mvp, 'mvp bundle ontbreekt');
+  assert(bundles.eh, 'eh bundle ontbreekt');
+  assert(bundles.mvp.mainModule, 'mvp.mainModule ontbreekt');
+  assert(bundles.mvp.mainWorker, 'mvp.mainWorker ontbreekt');
+  console.log('[offline] bundles beschikbaar:', Object.keys(bundles));
 
   let bundle;
   try {
-    bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+    bundle = await duckdb.selectBundle(bundles);
   } catch (e) {
     console.error('[offline] selectBundle failed:', e);
     throw new Error('Bundle selectie mislukt: ' + e.message);
   }
-  console.log('[offline] bundle:', JSON.stringify({ m: bundle.mainModule?.slice(-20), w: bundle.mainWorker?.slice(-30), pw: bundle.pthreadWorker?.slice(-30) || 'none' }));
+  assert(bundle, 'selectBundle returned null/undefined');
+  assert(bundle.mainModule, 'bundle.mainModule is leeg');
+  assert(typeof bundle.mainModule === 'string', 'bundle.mainModule is geen string');
+  assert(bundle.mainWorker, 'bundle.mainWorker is leeg');
+  assert(typeof bundle.mainWorker === 'string', 'bundle.mainWorker is geen string');
+  console.log('[offline] gekozen bundle:', JSON.stringify({
+    module: bundle.mainModule.slice(-30),
+    worker: bundle.mainWorker.slice(-40),
+    pthread: bundle.pthreadWorker ? bundle.pthreadWorker.slice(-40) : 'none',
+  }));
 
   logStep('Stap 3/6: Web Worker starten...');
   let worker;
@@ -94,48 +157,71 @@ async function initDB() {
     console.error('[offline] Worker creation failed:', e);
     throw new Error('Worker aanmaken mislukt: ' + e.message);
   }
-  worker.onerror = (e) => { console.error('[offline] worker error:', e); };
-  console.log('[offline] worker created:', worker ? 'yes' : 'no');
+  assert(worker, 'worker is null na constructie');
+  assert(worker instanceof Worker, 'worker is geen Worker instance');
+  worker.onerror = (e) => {
+    console.error('[offline] worker runtime error:', e.message, e.filename, e.lineno);
+    showError(`
+      <div class="text-red-600 text-lg font-bold mb-2">⚠️ Worker fout</div>
+      <p class="text-gray-600 mb-1">${e.message}</p>
+      <p class="text-xs text-gray-400">${e.filename}:${e.lineno}</p>
+      <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">🔄 Opnieuw proberen</button>`);
+  };
+  console.log('[offline] worker OK');
 
-  logStep('Stap 4/6: DuckDB instantieren (30MB WASM downloaden)...');
-  // Show progress bar
-  document.getElementById('loading-progress').classList.remove('hidden');
+  logStep('Stap 4/6: WASM bereikbaarheid checken...');
+  const progressEl = assertEl('loading-progress');
+  progressEl.classList.remove('hidden');
 
-  // Pre-check: can we reach the WASM file?
   console.log('[offline] WASM URL:', bundle.mainModule);
+  let wasmHead;
   try {
-    const test = await fetch(bundle.mainModule, { method: 'HEAD' });
-    console.log('[offline] WASM reachable:', test.status, 'size:', test.headers.get('content-length'));
+    wasmHead = await fetch(bundle.mainModule, { method: 'HEAD' });
   } catch (e) {
-    console.error('[offline] WASM pre-check failed:', e);
-    throw new Error('Kan WASM bestand niet bereiken: ' + e.message + '. Oude service worker actief?');
+    console.error('[offline] WASM HEAD failed:', e);
+    throw new Error('Kan WASM bestand niet bereiken (HEAD): ' + e.message);
   }
+  assert(wasmHead.ok, 'WASM HEAD returned status ' + wasmHead.status);
+  const contentLength = wasmHead.headers.get('content-length');
+  console.log('[offline] WASM status:', wasmHead.status, 'size:', contentLength || 'onbekend');
 
+  logStep('Stap 4/6: DuckDB instantieren (' + (contentLength ? (Math.round(Number(contentLength)/1048576) + 'MB') : 'onbekend') + ' WASM downloaden)...');
   const logger = new duckdb.ConsoleLogger();
+  assert(logger, 'ConsoleLogger is null');
   db = new duckdb.AsyncDuckDB(logger, worker);
+  assert(db, 'AsyncDuckDB is null na constructie');
+  assert(typeof db.instantiate === 'function', 'db.instantiate is geen function');
 
+  let progressReceived = false;
+  let instantiateOk = false;
   try {
-    // 120s timeout for slow WiFi
+    initTimer = Date.now();
     await Promise.race([
       db.instantiate(bundle.mainModule, null, (p) => {
-        console.log('[offline] progress raw:', JSON.stringify(p));
-        const loaded = p?.bytesLoaded ?? p?.loaded;
-        const total = p?.bytesTotal ?? p?.total;
+        progressReceived = true;
+        const loaded = p?.bytesLoaded ?? p?.loaded ?? p?.current;
+        const total = p?.bytesTotal ?? p?.total ?? p?.max;
         if (loaded != null && total != null && total > 0) {
           const pct = Math.round((loaded / total) * 100);
-          document.getElementById('loading-bar').style.width = pct + '%';
-          document.getElementById('loading-pct').textContent = pct + '%';
+          assertEl('loading-bar').style.width = pct + '%';
+          assertEl('loading-pct').textContent = pct + '%';
         }
+        console.log('[offline] progress:', JSON.stringify(p));
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout na 120s — WASM duurt te lang. Controleer je internetverbinding.')), 120000)),
     ]);
-    document.getElementById('loading-progress').classList.add('hidden');
+    instantiateOk = true;
+    const elapsed = Math.round((Date.now() - initTimer) / 1000);
+    console.log('[offline] instantiate OK in', elapsed, 's, progress received:', progressReceived);
   } catch (e) {
-    document.getElementById('loading-progress').classList.add('hidden');
-    console.error('[offline] instantiate failed:', e);
-    throw new Error('Instantiatie mislukt: ' + e.message);
+    const elapsed = Math.round((Date.now() - initTimer) / 1000);
+    progressEl.classList.add('hidden');
+    console.error('[offline] instantiate FAILED after', elapsed, 's, progress:', progressReceived, 'error:', e.message);
+    throw new Error('Instantiatie mislukt (' + elapsed + 's): ' + e.message);
   }
-  console.log('[offline] db instantiated');
+  progressEl.classList.add('hidden');
+  assert(instantiateOk, 'instantiate voltooid maar flag niet gezet');
+  assert(db, 'db is null na instantiate');
 
   logStep('Stap 5/6: Verbinding maken...');
   try {
@@ -144,7 +230,9 @@ async function initDB() {
     console.error('[offline] connect failed:', e);
     throw new Error('Connectie mislukt: ' + e.message);
   }
-  console.log('[offline] connected:', conn ? 'yes' : 'no');
+  assert(conn, 'conn is null na connect');
+  assert(typeof conn.query === 'function', 'conn.query is geen function');
+  console.log('[offline] connectie OK');
 
   logStep('Stap 6/6: Tabellen aanmaken...');
   try {
@@ -177,7 +265,11 @@ async function initDB() {
     console.error('[offline] create tables failed:', e);
     throw new Error('Tabellen aanmaken mislukt: ' + e.message);
   }
-  console.log('[offline] tables ready');
+  console.log('[offline] tabellen OK');
+
+  // Verify tables exist
+  const gameCount = (await conn.query('SELECT COUNT(*) as c FROM games')).toArray();
+  console.log('[offline] games table has', gameCount[0]?.c ?? '?', 'rows');
 
   return true;
 }
@@ -801,34 +893,58 @@ async function goNextRound() {
 // ── Init ──
 
 window.addEventListener('load', async () => {
+  // Defensive: ensure critical DOM elements exist before anything
+  try {
+    assertEl('loading');
+    assertEl('loading-step');
+    assertEl('loading-progress');
+    assertEl('loading-bar');
+    assertEl('loading-pct');
+  } catch (e) {
+    document.body.innerHTML = '<div style="padding:2rem;color:red;font-family:sans-serif"><h2>⚠️ Kritieke fout</h2><p>DOM elementen ontbreken: ' + e.message + '</p></div>';
+    console.error('[offline] DOM assert failed:', e);
+    return;
+  }
+
   logStep('Stap 0/6: Pagina geladen, initialisatie start...');
-  console.log('[offline] load event fired');
+  console.log('[offline] === INIT START ===');
   console.log('[offline] navigator.onLine:', navigator.onLine);
   console.log('[offline] userAgent:', navigator.userAgent);
+  console.log('[offline] serviceWorker:', 'serviceWorker' in navigator ? 'supported' : 'not supported');
 
   try {
     await initDB();
-    document.getElementById('loading').classList.add('hidden');
+    const loading = assertEl('loading');
+    loading.classList.add('hidden');
     console.log('[offline] DB init complete, rendering game list');
     await renderGameList();
     showPage('game-list-page');
+    console.log('[offline] === INIT SUCCESS ===');
   } catch (err) {
     const lastStep = document.getElementById('loading-step')?.textContent || 'onbekend';
-    console.error('[offline] INIT FAILED at step:', lastStep);
+    const elapsed = initTimer ? Math.round((Date.now() - initTimer) / 1000) + 's' : '?';
+    console.error('[offline] === INIT FAILED ===');
+    console.error('[offline] at step:', lastStep);
+    console.error('[offline] elapsed:', elapsed);
     console.error('[offline] error name:', err.name);
     console.error('[offline] error message:', err.message);
     console.error('[offline] error stack:', err.stack);
 
     const loading = document.getElementById('loading');
+    if (!loading) {
+      document.body.innerHTML = '<div style="padding:2rem;color:red"><h2>Kritieke fout</h2><p>Loading element verdwenen: ' + err.message + '</p></div>';
+      return;
+    }
     loading.innerHTML = `
       <div class="text-red-600 text-lg font-bold mb-2">⚠️ Fout bij laden database</div>
       <p class="text-gray-700 font-medium mb-1">Laatste stap: <span class="text-amber-600">${lastStep}</span></p>
+      <p class="text-gray-600 mb-1">Tijd: <span class="text-gray-500">${elapsed}</span></p>
       <p class="text-gray-600 mb-1">Fout: <span class="text-red-600">${err.message || 'Onbekende fout'}</span></p>
-      <p class="text-xs text-gray-400 font-mono mb-4 max-w-md mx-auto break-all">${err.name || ''}</p>
-      <p class="text-xs text-gray-400 mb-4">📋 Open DevTools (F12) → Console voor meer details</p>
+      <p class="text-xs text-gray-400 font-mono mb-4 max-w-md mx-auto break-all">Type: ${err.name || 'Error'}</p>
       <button onclick="location.reload()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow transition">
         🔄 Opnieuw proberen
-      </button>`;
+      </button>
+      <p class="mt-4 text-xs text-gray-400">Probeer ook: site data wissen in browser instellingen</p>`;
   }
 });
 
