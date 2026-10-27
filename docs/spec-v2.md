@@ -259,7 +259,7 @@ $ grep -nE '^function (roundSequence|totalRounds|cardsForRound|calculateScore|va
 ```
 
 and the same six functions in `internal/game/game.go`. The claim said
-`offline.js:7–50`; the block is **7–49**.
+`offline.js:7–50`; the block is **7–47**.
 
 **Correction to "two persistence layers":** the client has *no* persistence layer (§2.2).
 So the repo has one database engine (server SQLite) and one in-memory DuckDB that is
@@ -470,7 +470,7 @@ round_results 0
 - The database is readable (integrity `ok`) once you copy it **with** its `-wal` and
   `-shm` siblings. Opening only `db.sqlite` in place is unreliable while the WAL exists.
 - **0 rows in all three tables.** "84 KB of existing games" is **not reproducible**: the
-  three files total 76,256 bytes and contain no games.
+  three files total 78,096 bytes and contain no games.
 - The committed schema is stale: `games` has `direction` and `total_rounds`, and has **no
   `max_cards`** column, while `internal/db/db.go` queries `max_cards`. The committed DB
   predates the current code. The initial commit (`git log -- data/db.sqlite`) added an
