@@ -1,0 +1,113 @@
+:root {
+  /* Surface steps — one ground, four steps. */
+  --color-surface-0: #f2f5ef; /* page ground */
+  --color-surface-1: #ffffff; /* cards, sheets */
+  --color-surface-2: #f8faf6; /* inset wells, stepper keys */
+  --color-surface-3: #e6ede1; /* tracks, selected fills, matrix bands */
+  --color-surface-4: #d6e0d0; /* strongest step, pressed keys */
+
+  --color-border: #dce4d7;        /* 1.2:1 vs surface-1: structure */
+  --color-border-strong: #7c8a76; /* 3.4:1 vs surface-1: interactive outline */
+
+  /* Ink — three tiers, all ≥4.5:1 on surface-0/1/2/3. */
+  --color-text-primary: #141d16;   /* 15.7:1 on ground */
+  --color-text-secondary: #445046; /* 8.1:1 on surface-1 */
+  --color-text-tertiary: #59665a;  /* 6.1:1 on surface-1; 5.1:1 on surface-3 */
+  --color-text-inverse: #ffffff;
+
+  /* One accent: action and state. */
+  --color-accent: #0b5f3c;        /* 7.7:1 on white, 7.0:1 on ground */
+  --color-accent-hover: #08492d;
+  --color-accent-soft: #dbeee2;
+  --color-accent-ink: #0b5f3c;
+
+  /* Semantic error only. Never used for a negative score. */
+  --color-danger: #9e2b21;
+  --color-danger-soft: #fbe7e4;
+  --color-danger-ink: #7a1f18;
+
+  --color-focus: #0b5f3c;
+
+  /* Fixed player palette, seat order 1..8. All ≥6.3:1 vs #fff and vs white text. */
+  --player-1: #3d4ca8; /* indigo */
+  --player-2: #a62b2b; /* brick */
+  --player-3: #0b6b6b; /* teal */
+  --player-4: #8f4a0f; /* burnt orange */
+  --player-5: #7b2d8e; /* purple */
+  --player-6: #6e5c00; /* olive */
+  --player-7: #0b5fa5; /* blue */
+  --player-8: #a3286b; /* magenta */
+  --player-ink: #ffffff;
+
+  /* Type — five working sizes plus meta. System stack only. */
+  --font-sans: ui-rounded, "SF Pro Rounded", "Segoe UI Variable Display",
+    "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --text-display: 40px;
+  --text-title: 26px;
+  --text-heading: 20px;
+  --text-subhead: 17px;
+  --text-body: 16px;
+  --text-label: 14px;
+  --text-meta: 13px;
+  --text-micro: 11px;
+  --text-numeral-sm: 24px;
+  --text-numeral-card: 28px;
+  --text-numeral-md: 32px;
+  --leading-display: 1;
+  --leading-title: 1.12;
+  --leading-heading: 1.25;
+  --leading-body: 1.45;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 620;
+  --weight-bold: 760;
+
+  /* Space — 4 px base. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+
+  /* Shape — soft, one family; nested radii step down. */
+  --radius-card: 18px;
+  --radius-well: 14px;
+  --radius-control: 12px;
+  --radius-chip: 999px;
+
+  /* Rhythm. */
+  --page-pad: 16px;
+  --control-height: 48px;
+  --tap: 44px;
+  --tap-gap: 8px;
+  --topbar-height: 56px;
+  --dock-height: 76px;
+
+  /* Motion — exactly three events, all transform/opacity. */
+  --motion-ribbon: 180ms;
+  --motion-delta: 200ms;
+  --motion-sheet: 160ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-pad: 24px;
+    --text-title: 30px;
+    --topbar-height: 64px;
+    --dock-height: 84px;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --page-pad: 32px;
+    --text-title: 32px;
+    --text-display: 44px;
+  }
+}
