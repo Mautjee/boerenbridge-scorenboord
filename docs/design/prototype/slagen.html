@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f5ef">
+<title>Slagen · Boerenbridge</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-state="progress">
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="suit-club" viewBox="0 0 24 24"><path d="M12 2a3.5 3.5 0 0 1 3.2 4.9 3.5 3.5 0 1 1 1.9 6.3c-.8 0-1.5-.3-2.1-.7.3 2.2 1.1 4 2.5 5.5H6.5c1.4-1.5 2.2-3.3 2.5-5.5-.6.4-1.3.7-2.1.7a3.5 3.5 0 1 1 1.9-6.3A3.5 3.5 0 0 1 12 2z"/></symbol>
+  <symbol id="suit-diamond" viewBox="0 0 24 24"><path d="M12 2l8 10-8 10-8-10z"/></symbol>
+  <symbol id="suit-spade" viewBox="0 0 24 24"><path d="M12 2c3 4 8 6.5 8 10.2 0 2.2-1.7 3.8-3.8 3.8-1.2 0-2.3-.5-3.2-1.4.1 2 .8 3.7 2 5.4H9c1.2-1.7 1.9-3.4 2-5.4-.9.9-2 1.4-3.2 1.4C5.7 16 4 14.4 4 12.2 4 8.5 9 6 12 2z"/></symbol>
+  <symbol id="suit-heart" viewBox="0 0 24 24"><path d="M12 21S4.5 16.3 2.7 12C1.4 8.7 2.7 5 6 4.2 8 3.7 10.4 4.8 12 7c1.6-2.2 4-3.3 6-2.8 3.3.8 4.6 4.5 3.3 7.8C19.5 16.3 12 21 12 21z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 11h14v2H5z"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m9.2 16.2-4-4-1.4 1.4L9.2 19 21 7.2l-1.4-1.4z"/></symbol>
+</svg>
+
+<a class="skip-link" href="#main">Naar de inhoud</a>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="brand" href="spellen.html">
+      <svg class="brand__mark" viewBox="0 0 24 24" aria-hidden="true">
+        <use href="#suit-club" x="0" y="0" width="10" height="10" fill="#0b5f3c"/>
+        <use href="#suit-diamond" x="14" y="0" width="10" height="10" fill="#141d16"/>
+        <use href="#suit-heart" x="0" y="14" width="10" height="10" fill="#141d16"/>
+        <use href="#suit-spade" x="14" y="14" width="10" height="10" fill="#0b5f3c"/>
+      </svg>
+      <span class="brand__name">Boerenbridge</span>
+    </a>
+    <span class="status" aria-label="Offline. Alles is opgeslagen op dit apparaat.">
+      <span class="status__dot"></span>Offline<span class="status__more"> · opgeslagen</span>
+    </span>
+  </div>
+</header>
+
+<main id="main" class="page">
+  <div class="split">
+    <div>
+      <div class="screen-head">
+        <h1>Slagen</h1>
+        <p class="screen-sub">Hoeveel slagen heeft iedereen echt gehaald?</p>
+      </div>
+
+      <div class="row" style="flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-3)">
+        <span class="ribbon">
+          <svg class="ribbon__suit" aria-hidden="true"><use href="#suit-heart"/></svg>
+          Ronde 5
+          <span class="ribbon__divider" aria-hidden="true"></span>
+          5 kaarten p.p.
+        </span>
+        <span class="meta">Ronde 5 van 9</span>
+      </div>
+      <div class="track" style="margin-bottom: var(--space-4)">
+        <div class="track__fill" style="width:56%"></div>
+      </div>
+
+      <div data-view="finished">
+        <div class="result-banner" role="status" aria-live="polite">
+          <svg class="result-banner__glyph" aria-hidden="true"><use href="#i-check"/></svg>
+          <div>
+            <h2 class="result-banner__title">Ronde 5 afgerond</h2>
+            <p class="result-banner__body">De scores zijn bijgewerkt. Ronde 6 staat klaar.</p>
+          </div>
+        </div>
+        <div class="stack bid-grid" style="margin-top: var(--space-4)">
+          <div class="player-bid">
+            <span class="badge p1"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+            <span class="player-bid__who">
+              <span class="player-bid__name">Sanne</span>
+              <span class="player-bid__sub">bood 2 · 2 slagen</span>
+            </span>
+            <span class="delta delta--plus">+16</span>
+          </div>
+          <div class="player-bid">
+            <span class="badge p2"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+            <span class="player-bid__who">
+              <span class="player-bid__name">Mauro</span>
+              <span class="player-bid__sub">bood 1 · 1 slag</span>
+            </span>
+            <span class="delta delta--plus">+13</span>
+          </div>
+          <div class="player-bid">
+            <span class="badge p3"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+            <span class="player-bid__who">
+              <span class="player-bid__name">Joost</span>
+              <span class="player-bid__sub">bood 1 · 1 slag</span>
+            </span>
+            <span class="delta delta--plus">+13</span>
+          </div>
+          <div class="player-bid">
+            <span class="badge p4"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+            <span class="player-bid__who">
+              <span class="player-bid__name">Lotte</span>
+              <span class="player-bid__sub">bood 0 · 1 slag</span>
+            </span>
+            <span class="delta delta--minus">−3</span>
+          </div>
+        </div>
+      </div>
+
+      <div data-view="empty" class="stack">
+        <div class="card total-counter">
+          <div class="total-counter__row">
+            <span class="meta">Slagen ingevuld</span>
+            <span class="meta">5 kaarten p.p.</span>
+          </div>
+          <div class="total-counter__pair">
+            <span class="total-counter__value num" aria-live="polite">0</span>
+            <span class="total-counter__target">/ 5 slagen</span>
+          </div>
+          <div class="segments" aria-hidden="true">
+            <span class="segments__seg"></span><span class="segments__seg"></span><span class="segments__seg"></span><span class="segments__seg"></span><span class="segments__seg"></span>
+          </div>
+          <p class="field__hint">Verdeel alle 5 slagen over de spelers.</p>
+        </div>
+      </div>
+
+      <div data-view="progress" class="stack">
+        <div class="card total-counter">
+          <div class="total-counter__row">
+            <span class="meta">Slagen ingevuld</span>
+            <span class="meta">5 kaarten p.p.</span>
+          </div>
+          <div class="total-counter__pair">
+            <span class="total-counter__value num" aria-live="polite">4</span>
+            <span class="total-counter__target">/ 5 slagen</span>
+          </div>
+          <div class="segments" aria-hidden="true">
+            <span class="segments__seg segments__seg--on"></span><span class="segments__seg segments__seg--on"></span><span class="segments__seg segments__seg--on"></span><span class="segments__seg segments__seg--on"></span><span class="segments__seg"></span>
+          </div>
+          <p class="field__hint" role="status" aria-live="polite">Nog 1 slag te verdelen.</p>
+        </div>
+      </div>
+
+      <div data-view="ready" class="stack">
+        <div class="card total-counter">
+          <div class="total-counter__row">
+            <span class="meta">Slagen ingevuld</span>
+            <span class="meta">5 kaarten p.p.</span>
+          </div>
+          <div class="total-counter__pair">
+            <span class="total-counter__value total-counter__value--ok num" aria-live="polite">5</span>
+            <span class="total-counter__target">/ 5 slagen</span>
+          </div>
+          <div class="segments" aria-hidden="true">
+            <span class="segments__seg segments__seg--on"></span><span class="segments__seg segments__seg--on"></span><span class="segments__seg segments__seg--on"></span><span class="segments__seg segments__seg--on"></span><span class="segments__seg segments__seg--on"></span>
+          </div>
+          <p class="field__hint">Klopt. Rond de ronde af als iedereen het eens is.</p>
+        </div>
+      </div>
+
+      <div data-view="blocked" class="stack">
+        <div class="card total-counter">
+          <div class="total-counter__row">
+            <span class="meta">Slagen ingevuld</span>
+            <span class="meta">5 kaarten p.p.</span>
+          </div>
+          <div class="total-counter__pair">
+            <span class="total-counter__value total-counter__value--over num" aria-live="polite">6</span>
+            <span class="total-counter__target">/ 5 slagen</span>
+          </div>
+          <div class="segments" aria-hidden="true">
+            <span class="segments__seg segments__seg--on"></span><span class="segments__seg segments__seg--on"></span><span class="segments__seg segments__seg--on"></span><span class="segments__seg segments__seg--on"></span><span class="segments__seg segments__seg--over"></span>
+          </div>
+          <p class="field__hint" id="tricks-wrong" role="alert">Je hebt 6 van 5 slagen ingevuld. Haal er één slag af.</p>
+        </div>
+      </div>
+
+      <div class="stack bid-grid" data-view="empty progress ready blocked" style="margin-top: var(--space-3)">
+        <div class="player-bid">
+          <span class="badge p1"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+          <span class="player-bid__who">
+            <span class="player-bid__name">Sanne</span>
+            <span class="player-bid__sub">bood 2</span>
+          </span>
+          <div class="stepper">
+            <button class="step-btn" type="button" aria-label="Slagen van Sanne verlagen">
+              <svg class="step-btn__glyph"><use href="#i-minus"/></svg>
+            </button>
+            <button class="value-btn value-btn--filled" type="button" data-tricks="2" aria-label="Slagen van Sanne: 2. Open het toetsenbord.">2</button>
+            <button class="step-btn step-btn--plus" type="button" aria-label="Slagen van Sanne verhogen">
+              <svg class="step-btn__glyph"><use href="#i-plus"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="player-bid">
+          <span class="badge p2"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+          <span class="player-bid__who">
+            <span class="player-bid__name">Mauro</span>
+            <span class="player-bid__sub">bood 1</span>
+          </span>
+          <div class="stepper">
+            <button class="step-btn" type="button" aria-label="Slagen van Mauro verlagen">
+              <svg class="step-btn__glyph"><use href="#i-minus"/></svg>
+            </button>
+            <button class="value-btn value-btn--filled" type="button" data-tricks="1" aria-label="Slagen van Mauro: 1. Open het toetsenbord.">1</button>
+            <button class="step-btn step-btn--plus" type="button" aria-label="Slagen van Mauro verhogen">
+              <svg class="step-btn__glyph"><use href="#i-plus"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="player-bid">
+          <span class="badge p3"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+          <span class="player-bid__who">
+            <span class="player-bid__name">Joost</span>
+            <span class="player-bid__sub">bood 1</span>
+          </span>
+          <div class="stepper">
+            <button class="step-btn" type="button" aria-label="Slagen van Joost verlagen">
+              <svg class="step-btn__glyph"><use href="#i-minus"/></svg>
+            </button>
+            <button class="value-btn value-btn--filled" type="button" data-tricks="1" aria-label="Slagen van Joost: 1. Open het toetsenbord.">1</button>
+            <button class="step-btn step-btn--plus" type="button" aria-label="Slagen van Joost verhogen">
+              <svg class="step-btn__glyph"><use href="#i-plus"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="player-bid">
+          <span class="badge p4"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+          <span class="player-bid__who">
+            <span class="player-bid__name">Lotte</span>
+            <span class="player-bid__sub">bood 0</span>
+          </span>
+          <div class="stepper">
+            <button class="step-btn" type="button" aria-label="Slagen van Lotte verlagen" disabled>
+              <svg class="step-btn__glyph"><use href="#i-minus"/></svg>
+            </button>
+            <button class="value-btn value-btn--empty" type="button" data-tricks="0" aria-label="Slagen van Lotte: 0. Open het toetsenbord.">0</button>
+            <button class="step-btn step-btn--plus" type="button" aria-label="Slagen van Lotte verhogen">
+              <svg class="step-btn__glyph"><use href="#i-plus"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p class="field__hint" data-view="empty progress ready blocked" style="margin-top: var(--space-3)">Tik op een getal om het direct in te voeren.</p>
+    </div>
+
+    <aside class="split__aside" aria-label="Deze ronde">
+      <div class="card aside-summary">
+        <div class="section__head">
+          <h2>Biedingen</h2>
+          <span class="chip">Ronde 5</span>
+        </div>
+        <div class="summary-rows">
+          <div class="summary-row"><span><span class="badge badge--sm p1" style="display:inline-grid;vertical-align:middle;margin-right:6px"><svg class="badge__suit"><use href="#suit-club"/></svg></span>Sanne</span><span class="summary-row__value">2</span></div>
+          <div class="summary-row"><span><span class="badge badge--sm p2" style="display:inline-grid;vertical-align:middle;margin-right:6px"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>Mauro</span><span class="summary-row__value">1</span></div>
+          <div class="summary-row"><span><span class="badge badge--sm p3" style="display:inline-grid;vertical-align:middle;margin-right:6px"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>Joost</span><span class="summary-row__value">1</span></div>
+          <div class="summary-row"><span><span class="badge badge--sm p4" style="display:inline-grid;vertical-align:middle;margin-right:6px"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>Lotte</span><span class="summary-row__value">0</span></div>
+        </div>
+      </div>
+
+      <div class="action-dock">
+        <div class="action-dock__inner">
+          <a class="btn btn--secondary" href="scorebord.html" data-view="finished">Ongedaan maken</a>
+          <button class="btn btn--primary btn--block" type="button" id="submit-tricks">Ronde afronden</button>
+          <a class="btn btn--primary btn--block" href="scorebord.html" data-view="finished">Scorebord</a>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script>
+  (() => {
+    const state = new URLSearchParams(location.search).get('state') || 'progress';
+    document.body.dataset.state = state;
+    document.querySelectorAll('[data-view]').forEach((el) => {
+      const views = el.dataset.view.split(' ');
+      el.hidden = !views.includes(state);
+    });
+    const submit = document.getElementById('submit-tricks');
+    if (submit) {
+      if (state === 'finished') {
+        submit.hidden = true;
+      }
+      if (state === 'empty' || state === 'progress' || state === 'blocked') {
+        submit.disabled = true;
+        if (state === 'blocked') submit.setAttribute('aria-describedby', 'tricks-wrong');
+      }
+    }
+    const values = document.querySelectorAll('.value-btn[data-tricks]');
+    if (state === 'empty') {
+      values.forEach((btn) => {
+        btn.textContent = '0';
+        btn.dataset.tricks = '0';
+        btn.classList.remove('value-btn--filled');
+        btn.classList.add('value-btn--empty');
+      });
+      document.querySelectorAll('.player-bid .step-btn:not(.step-btn--plus)').forEach((btn) => { btn.disabled = true; });
+    }
+    if (state === 'ready') {
+      values.forEach((btn, index) => {
+        btn.textContent = index === 0 ? '2' : '1';
+        btn.dataset.tricks = index === 0 ? '2' : '1';
+        btn.classList.remove('value-btn--empty');
+        btn.classList.add('value-btn--filled');
+      });
+      document.querySelectorAll('.player-bid .step-btn').forEach((btn) => { btn.disabled = false; });
+    }
+    if (state === 'blocked') {
+      const last = values[3];
+      last.textContent = '2';
+      last.dataset.tricks = '2';
+      last.classList.remove('value-btn--empty');
+      last.classList.add('value-btn--filled');
+      document.querySelectorAll('.player-bid .step-btn:not(.step-btn--plus)').forEach((btn) => { btn.disabled = false; });
+    }
+  })();
+</script>
+</body>
+</html>

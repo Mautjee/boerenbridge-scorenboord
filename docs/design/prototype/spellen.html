@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f5ef">
+<title>Spellen · Boerenbridge</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-state="progress">
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="suit-club" viewBox="0 0 24 24"><path d="M12 2a3.5 3.5 0 0 1 3.2 4.9 3.5 3.5 0 1 1 1.9 6.3c-.8 0-1.5-.3-2.1-.7.3 2.2 1.1 4 2.5 5.5H6.5c1.4-1.5 2.2-3.3 2.5-5.5-.6.4-1.3.7-2.1.7a3.5 3.5 0 1 1 1.9-6.3A3.5 3.5 0 0 1 12 2z"/></symbol>
+  <symbol id="suit-diamond" viewBox="0 0 24 24"><path d="M12 2l8 10-8 10-8-10z"/></symbol>
+  <symbol id="suit-spade" viewBox="0 0 24 24"><path d="M12 2c3 4 8 6.5 8 10.2 0 2.2-1.7 3.8-3.8 3.8-1.2 0-2.3-.5-3.2-1.4.1 2 .8 3.7 2 5.4H9c1.2-1.7 1.9-3.4 2-5.4-.9.9-2 1.4-3.2 1.4C5.7 16 4 14.4 4 12.2 4 8.5 9 6 12 2z"/></symbol>
+  <symbol id="suit-heart" viewBox="0 0 24 24"><path d="M12 21S4.5 16.3 2.7 12C1.4 8.7 2.7 5 6 4.2 8 3.7 10.4 4.8 12 7c1.6-2.2 4-3.3 6-2.8 3.3.8 4.6 4.5 3.3 7.8C19.5 16.3 12 21 12 21z"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9.5 5.5 16 12l-6.5 6.5-1.4-1.4L13.2 12 8.1 6.9z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m9.2 16.2-4-4-1.4 1.4L9.2 19 21 7.2l-1.4-1.4z"/></symbol>
+</svg>
+
+<a class="skip-link" href="#main">Naar de inhoud</a>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="brand" href="spellen.html">
+      <svg class="brand__mark" viewBox="0 0 24 24" aria-hidden="true">
+        <use href="#suit-club" x="0" y="0" width="10" height="10" fill="#0b5f3c"/>
+        <use href="#suit-diamond" x="14" y="0" width="10" height="10" fill="#141d16"/>
+        <use href="#suit-heart" x="0" y="14" width="10" height="10" fill="#141d16"/>
+        <use href="#suit-spade" x="14" y="14" width="10" height="10" fill="#0b5f3c"/>
+      </svg>
+      <span class="brand__name">Boerenbridge</span>
+    </a>
+    <span class="status" aria-label="Offline. Alles is opgeslagen op dit apparaat.">
+      <span class="status__dot"></span>Offline<span class="status__more"> · opgeslagen</span>
+    </span>
+  </div>
+</header>
+
+<main id="main" class="page">
+  <div class="screen-head">
+    <div class="screen-head__row">
+      <h1>Spellen</h1>
+      <a class="btn btn--primary screen-action" href="nieuw-spel.html">Nieuw spel</a>
+    </div>
+    <p class="screen-sub">Kies een spel om verder te spelen, of begin een nieuw potje.</p>
+  </div>
+
+  <div data-view="empty">
+    <div class="card empty-card">
+      <svg class="empty-card__motif" viewBox="0 0 132 108" aria-hidden="true">
+        <g transform="rotate(-12 32 54)">
+          <rect x="8" y="20" width="46" height="66" rx="8" fill="#ffffff" stroke="#dce4d7"/>
+        </g>
+        <g transform="rotate(0 66 54)">
+          <rect x="43" y="13" width="46" height="66" rx="8" fill="#ffffff" stroke="#dce4d7"/>
+          <use href="#suit-heart" x="58" y="30" width="16" height="16" fill="#0b5f3c"/>
+          <rect x="55" y="55" width="22" height="4" rx="2" fill="#e6ede1"/>
+          <rect x="55" y="63" width="14" height="4" rx="2" fill="#e6ede1"/>
+        </g>
+        <g transform="rotate(12 100 54)">
+          <rect x="78" y="20" width="46" height="66" rx="8" fill="#ffffff" stroke="#dce4d7"/>
+        </g>
+      </svg>
+      <h2 class="empty-card__title">Nog geen spel op tafel</h2>
+      <p class="empty-card__body">Zodra je een potje begint, staat het hier — ook als je de app sluit.</p>
+    </div>
+  </div>
+
+  <div data-view="progress" class="game-list">
+    <a class="game-card" href="biedingen.html">
+      <div class="game-card__top">
+        <span class="chip chip--accent"><span class="chip__dot"></span>Bezig</span>
+        <span class="meta">Vandaag, 20:14</span>
+      </div>
+      <div class="game-card__players">Sanne, Mauro, Joost en Lotte</div>
+      <div class="round-progress">
+        <div class="round-progress__line">
+          <span>Ronde 4 van 9</span>
+          <span>5 kaarten p.p.</span>
+        </div>
+        <div class="track"><div class="track__fill" style="width:44%"></div></div>
+      </div>
+      <div class="game-card__bottom">
+        <div class="avatar-row" aria-hidden="true">
+          <span class="badge badge--sm p1"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+          <span class="badge badge--sm p2"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+          <span class="badge badge--sm p3"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+          <span class="badge badge--sm p4"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+        </div>
+        <span class="game-card__cta">Verder spelen
+          <svg class="chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </span>
+      </div>
+    </a>
+
+    <a class="game-card" href="afgelopen.html">
+      <div class="game-card__top">
+        <span class="chip">Afgelopen</span>
+        <span class="meta">12 oktober</span>
+      </div>
+      <div class="game-card__players">Sanne, Mauro, Joost en Lotte</div>
+      <div class="winner-line">
+        <span class="winner-line__name">Sanne wint</span>
+        <span class="winner-line__score num">120</span>
+        <span class="winner-line__pts">punten</span>
+      </div>
+      <div class="game-card__bottom">
+        <div class="avatar-row" aria-hidden="true">
+          <span class="badge badge--sm p1"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+          <span class="badge badge--sm p2"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+          <span class="badge badge--sm p3"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+          <span class="badge badge--sm p4"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+        </div>
+        <span class="game-card__cta">Scorebord bekijken
+          <svg class="chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </span>
+      </div>
+    </a>
+
+    <a class="game-card" href="afgelopen.html">
+      <div class="game-card__top">
+        <span class="chip">Afgelopen</span>
+        <span class="meta">4 oktober</span>
+      </div>
+      <div class="game-card__players">Bram, Noor, Daan en Fien</div>
+      <div class="winner-line">
+        <span class="winner-line__name">Noor wint</span>
+        <span class="winner-line__score num">96</span>
+        <span class="winner-line__pts">punten</span>
+      </div>
+      <div class="game-card__bottom">
+        <div class="avatar-row" aria-hidden="true">
+          <span class="badge badge--sm p5"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+          <span class="badge badge--sm p6"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+          <span class="badge badge--sm p7"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+          <span class="badge badge--sm p8"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+        </div>
+        <span class="game-card__cta">Scorebord bekijken
+          <svg class="chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </span>
+      </div>
+    </a>
+
+    <a class="game-card" href="afgelopen.html">
+      <div class="game-card__top">
+        <span class="chip">Afgelopen</span>
+        <span class="meta">28 september</span>
+      </div>
+      <div class="game-card__players">Bram, Noor, Daan en Fien</div>
+      <div class="winner-line">
+        <span class="winner-line__name">Bram wint</span>
+        <span class="winner-line__score num">88</span>
+        <span class="winner-line__pts">punten</span>
+      </div>
+      <div class="game-card__bottom">
+        <div class="avatar-row" aria-hidden="true">
+          <span class="badge badge--sm p5"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+          <span class="badge badge--sm p6"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+          <span class="badge badge--sm p7"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+          <span class="badge badge--sm p8"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+        </div>
+        <span class="game-card__cta">Scorebord bekijken
+          <svg class="chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </span>
+      </div>
+    </a>
+  </div>
+
+  <div data-view="finished" class="game-list">
+    <a class="game-card" href="afgelopen.html">
+      <div class="game-card__top">
+        <span class="chip">Afgelopen</span>
+        <span class="meta">Vandaag, 22:06</span>
+      </div>
+      <div class="game-card__players">Sanne, Mauro, Joost en Lotte</div>
+      <div class="winner-line">
+        <span class="winner-line__name">Sanne wint</span>
+        <span class="winner-line__score num">120</span>
+        <span class="winner-line__pts">punten</span>
+      </div>
+      <div class="game-card__bottom">
+        <div class="avatar-row" aria-hidden="true">
+          <span class="badge badge--sm p1"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+          <span class="badge badge--sm p2"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+          <span class="badge badge--sm p3"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+          <span class="badge badge--sm p4"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+        </div>
+        <span class="game-card__cta">Scorebord bekijken
+          <svg class="chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </span>
+      </div>
+    </a>
+
+    <a class="game-card" href="afgelopen.html">
+      <div class="game-card__top">
+        <span class="chip">Afgelopen</span>
+        <span class="meta">12 oktober</span>
+      </div>
+      <div class="game-card__players">Bram, Noor, Daan en Fien</div>
+      <div class="winner-line">
+        <span class="winner-line__name">Noor wint</span>
+        <span class="winner-line__score num">96</span>
+        <span class="winner-line__pts">punten</span>
+      </div>
+      <div class="game-card__bottom">
+        <div class="avatar-row" aria-hidden="true">
+          <span class="badge badge--sm p5"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+          <span class="badge badge--sm p6"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+          <span class="badge badge--sm p7"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+          <span class="badge badge--sm p8"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+        </div>
+        <span class="game-card__cta">Scorebord bekijken
+          <svg class="chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </span>
+      </div>
+    </a>
+
+    <a class="game-card" href="afgelopen.html">
+      <div class="game-card__top">
+        <span class="chip">Afgelopen</span>
+        <span class="meta">21 september</span>
+      </div>
+      <div class="game-card__players">Noor, Fien, Bram en Daan</div>
+      <div class="winner-line">
+        <span class="winner-line__name">Fien wint</span>
+        <span class="winner-line__score num">74</span>
+        <span class="winner-line__pts">punten</span>
+      </div>
+      <div class="game-card__bottom">
+        <div class="avatar-row" aria-hidden="true">
+          <span class="badge badge--sm p5"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+          <span class="badge badge--sm p6"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+          <span class="badge badge--sm p7"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+          <span class="badge badge--sm p8"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+        </div>
+        <span class="game-card__cta">Scorebord bekijken
+          <svg class="chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </span>
+      </div>
+    </a>
+  </div>
+</main>
+
+<div class="action-dock action-dock--mobile">
+  <div class="action-dock__inner">
+    <a class="btn btn--primary" href="nieuw-spel.html">Nieuw spel</a>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const state = new URLSearchParams(location.search).get('state') || 'progress';
+    document.body.dataset.state = state;
+    document.querySelectorAll('[data-view]').forEach((el) => {
+      el.hidden = el.dataset.view !== state;
+    });
+  })();
+</script>
+</body>
+</html>
