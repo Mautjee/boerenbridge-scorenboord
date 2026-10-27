@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --experimental-strip-types --test web/src/test/*.test.ts"
+    "test": "node --experimental-strip-types --test web/src/test/*.test.ts",
+    "icons": "node scripts/gen-icons.mjs",
+    "verify:budgets": "node scripts/verify/budgets.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2"

@@ -1,9 +1,11 @@
-import { SPELS, cardsLine, formatCardDate, namesLine } from '../copy.ts';
+import { downloadText, importGames, parseBackup, serializeBackup } from '../backup.ts';
+import { APP_VERSION, PWA, SPELS, cardsLine, formatCardDate, namesLine } from '../copy.ts';
 import { el, type Child } from '../dom.ts';
 import { totals } from '../model.ts';
+import { storageEstimateText } from '../pwa.ts';
 import { totalRounds } from '../rules.ts';
-import type { Game } from '../types.ts';
-import { actionDock, badge, chip, confirmAction, emptyCard, icon, screenHead, track } from './components.ts';
+import { SCHEMA_VERSION, type Game } from '../types.ts';
+import { actionDock, badge, chip, confirmAction, emptyCard, icon, screenHead, toast, track } from './components.ts';
 import type { ViewContext } from './types.ts';
 
 function playerLabel(game: Game): string {
@@ -148,6 +150,65 @@ function finishedCard(game: Game, ctx: ViewContext): HTMLElement {
   );
 }
 
+function appFooter(ctx: ViewContext): HTMLElement {
+  const estimate = el('span', { class: 'app-footer__estimate' }, PWA.storageUnknown);
+  const line = el('p', { class: 'app-footer__line' }, `versie ${APP_VERSION} · opslag v${SCHEMA_VERSION} · `);
+  line.appendChild(estimate);
+  void storageEstimateText().then((text) => {
+    estimate.textContent = text;
+  });
+
+  const exportButton = el(
+    'button',
+    { class: 'btn btn--secondary btn--sm', type: 'button', 'aria-label': PWA.exportAria },
+    PWA.export,
+  );
+  exportButton.addEventListener('click', () => {
+    void (async () => {
+      try {
+        const games = await ctx.store.list();
+        const date = new Date().toISOString().slice(0, 10);
+        downloadText(serializeBackup(games), PWA.exportFileName(date));
+        toast(PWA.exportDone);
+      } catch {
+        toast(PWA.exportFailed);
+      }
+    })();
+  });
+
+  const fileInput = el('input', { type: 'file', class: 'visually-hidden' });
+  fileInput.accept = 'application/json,.json';
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files?.[0];
+    if (file === undefined) {
+      return;
+    }
+    void (async () => {
+      try {
+        const text = await file.text();
+        const imported = parseBackup(text);
+        const saved = await importGames(ctx.store, imported);
+        toast(PWA.importDone(saved.length));
+        await ctx.reload();
+      } catch (error) {
+        toast(error instanceof Error ? error.message : PWA.importFailed);
+      } finally {
+        fileInput.value = '';
+      }
+    })();
+  });
+
+  const importButton = el(
+    'button',
+    { class: 'btn btn--secondary btn--sm', type: 'button', 'aria-label': PWA.importAria },
+    PWA.import,
+  );
+  importButton.addEventListener('click', () => fileInput.click());
+
+  const actions = el('div', { class: 'app-footer__actions' }, exportButton, importButton, fileInput);
+  return el('footer', { class: 'app-footer' }, line, actions);
+}
+
 export function spellenView(games: Game[], ctx: ViewContext): HTMLElement {
   const active = games.filter((game) => game.phase === 'active');
   const finished = games.filter((game) => game.phase === 'finished');
@@ -170,5 +231,6 @@ export function spellenView(games: Game[], ctx: ViewContext): HTMLElement {
   root.appendChild(
     actionDock([el('a', { class: 'btn btn--primary', href: '#/nieuw' }, SPELS.newGame)], { mobileOnly: true }),
   );
+  root.appendChild(appFooter(ctx));
   return root;
 }

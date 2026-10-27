@@ -1,5 +1,6 @@
 import { APP_NAME, COMMON, STATUS } from './copy.ts';
 import { clear, el } from './dom.ts';
+import { registerPwa } from './pwa.ts';
 import { parseRoute, screenForGame, type Route } from './router.ts';
 import { GameSession } from './session.ts';
 import { openGameStore, type GameStore } from './store.ts';
@@ -165,6 +166,7 @@ export async function boot(): Promise<void> {
   root = main;
   const opened = await openGameStore();
   state = { store: opened.store, fallback: opened.fallback, ...(opened.reason === undefined ? {} : { reason: opened.reason }) };
+  registerPwa();
   paintStatus();
   window.addEventListener('hashchange', () => {
     void render();

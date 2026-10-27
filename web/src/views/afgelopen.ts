@@ -1,3 +1,4 @@
+import { publish, shareUrl } from '../api.ts';
 import { AFGELOPEN, formatLongDate, formatScore } from '../copy.ts';
 import { el } from '../dom.ts';
 import { totals } from '../model.ts';
@@ -22,7 +23,12 @@ function copyFallback(text: string): boolean {
 }
 
 async function shareScoreboard(game: Game): Promise<void> {
-  const url = `${window.location.origin}/s/${game.id}`;
+  const published = await publish(game);
+  if (!published.ok) {
+    toast(AFGELOPEN.shareNotPublished);
+    return;
+  }
+  const url = shareUrl(game.id);
   if (typeof navigator.share === 'function') {
     try {
       await navigator.share({ title: AFGELOPEN.shareTitle, text: AFGELOPEN.shareText, url });

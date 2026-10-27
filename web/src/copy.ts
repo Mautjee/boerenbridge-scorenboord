@@ -1,6 +1,7 @@
-import type { Direction } from './types.ts';
+import { SCHEMA_VERSION, type Direction } from './types.ts';
 
 export const APP_NAME = 'Boerenbridge';
+export const APP_VERSION = '2.0.0';
 
 export const STATUS = {
   online: {
@@ -224,6 +225,7 @@ export const AFGELOPEN = {
   shareCopied: 'Link gekopieerd. Iedereen kan het scorebord nu bekijken.',
   shareDone: 'Scorebord gedeeld.',
   shareFailed: 'Kopiëren lukte niet. Deel de link uit de adresbalk.',
+  shareNotPublished: 'Delen lukte niet. Publiceer het scorebord opnieuw met verbinding.',
   newGame: 'Nieuw spel',
   shareHint: 'Delen geeft een pagina die iedereen kan bekijken zonder de app.',
   shareTitle: 'Boerenbridge-scorebord',
@@ -233,6 +235,35 @@ export const AFGELOPEN = {
 export const KEYPAD = {
   columns3: 3,
   columns4: 4,
+};
+
+export const PWA = {
+  updateAvailable: 'Nieuwe versie beschikbaar',
+  reload: 'Herladen',
+  updateAria: 'Er is een nieuwe versie van de app. Herladen om die te gebruiken.',
+  precacheFailed: 'Offline niet beschikbaar — herlaad met internet.',
+  precacheFailedAria: 'Niet alle onderdelen van de app zijn opgeslagen. Herlaad met internet.',
+  storageUnknown: 'opslag onbekend',
+  storageUsage: (used: string, quota: string) => `${used} van ${quota} gebruikt`,
+  footer: (estimate: string) => `versie ${APP_VERSION} · opslag v${SCHEMA_VERSION} · ${estimate}`,
+  export: 'Exporteer JSON',
+  import: 'Importeer JSON',
+  exportAria: 'Alle spellen als JSON-bestand bewaren',
+  importAria: 'Spellen uit een JSON-bestand terughalen',
+  exportDone: 'JSON-bestand gedownload.',
+  exportFailed: 'Exporteren lukte niet.',
+  importDone: (count: number) => `${count} ${count === 1 ? 'spel' : 'spellen'} teruggezet.`,
+  importFailed: 'Importeren lukte niet.',
+  backupInvalid: 'Dit is geen geldig Boerenbridge-back-upbestand.',
+  backupVersion: (found: number) => `Deze back-up heeft opslagversie ${found}; deze app leest alleen versie ${SCHEMA_VERSION}.`,
+  backupEmpty: 'Dit bestand bevat geen spellen.',
+  exportFileName: (date: string) => `boerenbridge-${date}.json`,
+};
+
+export const API = {
+  publishFailed: 'Publiceren lukte niet.',
+  fetchFailed: 'Dit spel kon niet worden opgehaald.',
+  offline: 'Geen verbinding — probeer het opnieuw als je online bent.',
 };
 
 export function namesLine(names: string[]): string {

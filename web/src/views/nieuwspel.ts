@@ -1,5 +1,6 @@
 import { NIEUW, roundsCount, sequenceLine } from '../copy.ts';
 import { el } from '../dom.ts';
+import { requestPersistenceOnce } from '../pwa.ts';
 import { GameSession } from '../session.ts';
 import { roundSequence, totalRounds } from '../rules.ts';
 import type { Direction } from '../types.ts';
@@ -309,6 +310,7 @@ export function nieuwSpelView(ctx: ViewContext): HTMLElement {
         direction,
         maxCards,
       });
+      requestPersistenceOnce();
       window.location.hash = `#/spel/${session.game.id}`;
     })();
   }
