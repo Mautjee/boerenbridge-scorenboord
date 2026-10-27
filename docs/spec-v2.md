@@ -4,6 +4,7 @@ status: ready for design + build
 branch: soot-33-pwa-v2
 base: main @ dfc3b2886747df379ad46c52d54e423ea5acaec8 (2026-08-11)
 re-verified: 2026-10-27
+revision: 2 (clean slate — no migration, parent rev 8)
 supersedes: templates/, static/offline.js, static/sw.js, internal/handlers/handlers.go
 ---
 
@@ -28,12 +29,12 @@ still there. No CDN, no 30 MB download, no second code path.
 - §3 is the target shape: layout, data model, signatures, contracts.
 - §4 is the file-by-file change list with the owning build unit (3.1–3.4). No file is
   owned by two units without a stated ordering reason.
-- §5 is the migration plan for `data/*.sqlite`.
+- §5 is the clean-slate reset: back up once, start empty, explicit `schema_version`.
 - §6 restates AC-1…AC-26 as executable checks with a named owner stage.
 - §7 is out of scope. §8 is open questions. §9 is the handoff note per stage.
 
 Commands assume the repo root. `$PWD` is the checkout path. Go commands use the Docker
-fallback from §2.9 because **no Go toolchain exists on this host or in the build
+fallback from §2.10 because **no Go toolchain exists on this host or in the build
 sandbox**.
 
 ---
@@ -130,9 +131,9 @@ that exists only for DuckDB threads is deleted.
 ### 1.5 D4 — One rule engine at runtime; Go stays as the reference
 
 **Decision.** `web/src/rules.ts` is the only rule engine in the shipped app. Go's
-`internal/game` stays in the repo as the reference implementation, the source of
-`testdata/rule-vectors.json`, and the migration verifier. It is never on the serving
-path.
+`internal/game` stays in the repo as the reference implementation and the source of
+`testdata/rule-vectors.json`. It is never on the serving path, and no other package
+imports it.
 
 **Why.** §1.8 says keep the tested Go rules. The cheapest honest way to keep them is: the
 Go package produces the frozen vectors; the TS port is tested against those same vectors
@@ -172,7 +173,7 @@ Deleted by unit 3.4 unless marked otherwise:
 | `chart.js` (`cdn.jsdelivr.net`) | 200 KB for a chart we redraw as inline SVG in ≤40 lines |
 | DuckDB-WASM + Apache Arrow (`cdn.jsdelivr.net`) | §1.4 |
 | COOP/COEP header block (`internal/handlers/handlers.go:107–108`) | existed only for DuckDB threads |
-| `GET /` catch-all | unknown paths must 404, not render the home page (§2.7) |
+| `GET /` catch-all | unknown paths must 404, not render the home page (§2.8) |
 | `build.sh` | build moves to `npm run build` + `go build` |
 | `COPY templates/` and `COPY static/` in the `Dockerfile` | those directories no longer exist; assets are embedded |
 
@@ -189,8 +190,8 @@ read vectors), `internal/db` (rewritten, same package path), `PROMPT.md`, `.herm
 - Two rule *implementations* remain in the repo, on purpose: one runtime, one reference.
   The vector file is the contract between them.
 - The old `data/db.sqlite` is not shipped in the image (`.dockerignore` already excludes
-  `data/`) and is not the real data (§2.8). Migration therefore treats the deployed
-  volume as the source and a synthetic legacy fixture as the test.
+  `data/`) and is not the real data (§2.9). It is deleted from the tree in 3.4; the host
+  volume is backed up once and wiped (§5). Nothing converts it.
 
 ---
 
@@ -198,7 +199,7 @@ read vectors), `internal/db` (rewritten, same package path), `PROMPT.md`, `.herm
 
 Working tree at `dfc3b28`, branch `soot-33-pwa-v2` created from it. All commands were run
 from the repo root on this host; Go commands were run in `golang:1.23-alpine` because no
-Go toolchain is installed (§2.9).
+Go toolchain is installed (§2.10).
 
 ### 2.1 Line counts and the two apps — confirmed with one correction
 
@@ -401,14 +402,26 @@ ok  	boerenbridge-scorenboord/internal/game	0.003s
 The code, the tests and the *stored* scores agree: `SaveTricksAndScores` writes
 `10 + 3*bid` / `-3*diff` (internal/db/db.go:239–252). The docs disagree with both. I found
 **no hard evidence that the docs are right** — no historical game in the repo has a score
-computed by the `+2` formula (§2.8). The Foreman ruling stands: keep `10 + 3×bod`, fix the
+computed by the `+2` formula (§2.9). The Foreman ruling stands: keep `10 + 3×bod`, fix the
 docs. No stop condition triggered.
 
 Also wrong in `AGENTS.md:9`: it says SQLite via `mattn/go-sqlite3`; `go.mod` uses
 `modernc.org/sqlite`. Unit 3.1 fixes the scoring lines, unit 3.4 fixes the architecture
 text.
 
-### 2.7 Live state — confirmed, including the catch-all
+### 2.7 Clean slate, no migration — decision recorded
+
+The parent's §8.4 is resolved (rev 8): **the existing game data is disposable.** There is
+no migration, no importer, no legacy schema mapping and no compatibility layer. The old
+volume is copied once to a dated backup path and listed before it is wiped; the new server
+store starts empty with an explicit `schema_version` (§5). The earlier "migration plan"
+framing is gone, not deprecated.
+
+The measurement in §2.9 is what makes this safe rather than reckless: the committed
+`data/db.sqlite` contains 0 games, and the schema it holds is already older than the code.
+There is nothing in the tree to lose and no conversion to maintain.
+
+### 2.8 Live state — confirmed, including the catch-all
 
 ```
 $ for p in / /nonexistent /healthz /offline /static/manifest.json /static/sw.js; do ... done
@@ -440,9 +453,9 @@ notAfter=Nov 30 07:31:48 2026 GMT
 
 Confirmed: valid Let's Encrypt certificate, no DNS work needed.
 
-### 2.8 `data/db.sqlite` — **corrected: it is empty, and its schema is stale**
+### 2.9 `data/db.sqlite` — **corrected: it is empty, and its schema is stale**
 
-This is the finding that changes the migration plan.
+This is the finding that makes the wipe safe.
 
 ```
 $ ls -l data/
@@ -479,13 +492,13 @@ round_results 0
 **Consequence.** The real games, if any, live in the Dokploy volume at `/data/db.sqlite`
 on the host, not in git. The repo file is a *schema fixture with zero rows*. Therefore:
 
-- the migration tool must handle at least three legacy shapes (no `max_cards`; no
-  `direction`; both) and must infer a missing `max_cards` from `total_rounds` (§5.3);
-- AC-12 is proven on (a) a synthetic non-empty legacy fixture in the repo and (b) the real
-  host copy at stage 7, with before/after counts pasted;
-- nobody may claim "84 KB of real games were migrated" from the repo checkout.
+- the wipe is safe to approve: the tree holds no games to lose and no code reads this
+  schema;
+- the host volume is still copied once and listed before deletion (§5.2) — the decision is
+  to discard the data, not to lose it by accident;
+- nobody may claim "84 KB of real games" existed in the repo checkout.
 
-### 2.9 Toolchain reality — new finding, affects every Go gate
+### 2.10 Toolchain reality — new finding, affects every Go gate
 
 ```
 $ which go || echo 'go: not on PATH'
@@ -529,15 +542,12 @@ This is why `npm test` needs no `ts-node`/`tsx`/`jest` and no second dev depende
 
 ```
 cmd/
-  server/main.go              # HTTP only: assets, API, share, healthz
-  migrate/main.go             # CLI: legacy SQLite -> snapshot JSON bundle
+  server/main.go              # HTTP only: assets, API, share, healthz, -dbinfo
 internal/
   db/store.go                 # snapshot store (SQLite, modernc)
   game/game.go                # UNCHANGED reference implementation
   game/game_test.go           # loads testdata/rule-vectors.json
   handlers/{api,share,health,errors}.go
-  migration/{migrate,verify}.go
-  migration/testdata/         # legacy .sql sources + generated .sqlite fixtures
 web/
   index.html                  # shell markup (no build template except __ASSET_VERSION__)
   src/
@@ -617,11 +627,11 @@ export interface PendingRound {
 }
 
 export interface Game {
-  schemaVersion: 2;
+  schemaVersion: number;  // must equal SCHEMA_VERSION (currently 2); no other value is read
   id: string;            // UUID v4
   createdAt: string;     // RFC3339, UTC
   updatedAt: string;     // set by the store, not by pure model functions
-  phase: GamePhase;      // explicit; a finished game may be shorter than totalRounds (legacy early end)
+  phase: GamePhase;      // explicit; a finished game may be shorter than totalRounds (ended early)
   setup: {
     players: Player[];
     direction: Direction;
@@ -630,7 +640,6 @@ export interface Game {
   rounds: CompletedRound[];
   pending: PendingRound | null;   // null iff phase === 'finished'
   revision: number;      // +1 per mutation; used by the publish endpoint
-  legacy?: { id: number; source: string };
 }
 ```
 
@@ -640,11 +649,16 @@ Deliberate properties:
   why correcting round 3 after round 7 is correct by construction, not by a recompute
   loop (AC-19).
 - **`scores` is stored per round anyway** so the snapshot is self-describing for the share
-  page and for migration verification. The renderer must not trust it blindly — it derives
-  totals from `scores`, and `model` recomputes `scores` whenever bids/tricks change.
+  page and the server store. The renderer must not trust it blindly — it derives totals
+  from `scores`, and `model` recomputes `scores` whenever bids/tricks change.
 - **`seat` is the array index everywhere.** Bids/tricks/score arrays are seat-indexed; no
   object keyed by player id in the snapshot.
 - **`pending` has no `tricks`.** Submitting tricks completes a round atomically.
+- **`schemaVersion` is normative.** One constant per side (`SCHEMA_VERSION` in
+  `web/src/types.ts` and `internal/db/store.go`), both pinned to
+  `testdata/schema-version.txt`. The client loads only `schemaVersion === SCHEMA_VERSION`;
+  the server rejects any other value and never converts. There is no `legacy` field — old
+  snapshots do not exist in this release.
 - JSON size for 8 players × 51 rounds ≈ 12 KB. Well inside a 64 KiB API body limit.
 
 ### 3.4 Module boundaries and signatures
@@ -765,22 +779,28 @@ All JSON responses are `application/json; charset=utf-8`; all errors are
 
 - Request body: the `Game` object, max 64 KiB (`http.MaxBytesReader`).
 - `Content-Type` must be `application/json` → else **415**.
-- Validate shape: `schemaVersion === 2`, UUID id, 2–8 players, contiguous rounds from 1,
-  per-round array lengths === player count, `tricks` sums to `cards`, completed-round
-  `bids` do **not** sum to `cards`, `cards === cardsForRound(round, ...)` — computed from
-  the request's own setup with the *Go* reference function. Do not recompute scores.
+- Validate shape: `schemaVersion === SCHEMA_VERSION` (2), UUID id, 2–8 players, contiguous
+  rounds from 1 (`rounds[i].round === i+1`), per-round array lengths === player count,
+  `cards` in 1..52, `tricks` sums to `cards`, completed-round `bids` do **not** sum to
+  `cards`. Do **not** recompute scores and do **not** import `internal/game`: that package
+  is the test reference, not part of the serving path (§1.5). Structural validation only.
 - Unknown/malformed → **400** with a specific Dutch sentence.
 - New id → **201**; existing id with `revision >` stored → **200**; else **409**
   `{"error":"Dit spel is al gepubliceerd met een nieuwere versie."}`.
-- Response: `{"id":"...","revision":N}`.
+- Response: `{"id":"...","revision":N,"schema_version":2}`.
 
-**`GET /api/games/{id}`** → **200** snapshot JSON verbatim; **404** Dutch error.
+**`GET /api/games/{id}`** → **200** snapshot JSON verbatim (including its
+`schemaVersion`); **404** Dutch error.
+
+**`cmd/server -dbinfo`** → opens `DB_PATH`, prints `schema_version=<n> snapshots=<count>`,
+exits 0. No HTTP. This is the command that proves the fresh store is empty and versioned.
 
 **`GET /s/{id}`** → **200** server-rendered read-only HTML: game title, date, player names,
 per-round matrix, totals, winner. Inline `<style>` allowed; **no `<script>` element at
 all**. **404** Dutch HTML page.
 
-**`GET /healthz`** → **200** `{"status":"ok","commit":"<sha>","version":"2.0.0"}`.
+**`GET /healthz`** → **200**
+`{"status":"ok","commit":"<sha>","version":"2.0.0","schema_version":2}`.
 `commit` comes from `-ldflags -X main.commit=...`; the Dockerfile takes `ARG GIT_SHA`.
 
 **`GET /`** → the embedded shell (`index.html`), `Cache-Control: no-cache`.
@@ -791,21 +811,27 @@ what makes offline fast.
 **Anything else** → **404**: HTML for a browser `Accept`, JSON for `/api/*`. The `GET /`
 catch-all is removed; `http.ServeMux` patterns `GET /{$}` and `GET /static/` only.
 
-Snapshot store:
+Snapshot store — empty on first start, explicit version, no upgrade path (§5.3):
 
 ```sql
+CREATE TABLE IF NOT EXISTS meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL            -- schema_version = '2'
+);
+
 CREATE TABLE IF NOT EXISTS snapshots (
-  id           TEXT PRIMARY KEY,
-  revision     INTEGER NOT NULL,
-  published_at TEXT NOT NULL,
-  updated_at   TEXT NOT NULL,
-  body         BLOB NOT NULL
+  id             TEXT PRIMARY KEY,
+  schema_version INTEGER NOT NULL,   -- must equal meta.schema_version
+  revision       INTEGER NOT NULL,
+  published_at   TEXT NOT NULL,
+  updated_at     TEXT NOT NULL,
+  body           BLOB NOT NULL
 );
 ```
 
 `DB_PATH` defaults to `./data/snapshots.sqlite` locally and `/data/snapshots.sqlite` in the
-container. **The new server never opens the legacy `db.sqlite`** — that file stays
-untouched (§5.1).
+container. **The new server never opens the legacy `db.sqlite`**: it is backed up and
+removed before the new image starts (§5.2), and no code path can read it.
 
 ### 3.7 Service worker contract
 
@@ -871,7 +897,7 @@ npm run verify:budgets # gzip sizes + precache total, fails over budget
 ## 4. File-by-file change list
 
 Unit key: **3.1** rules/storage, **3.2** screens, **3.3** PWA, **3.4** server + deletions +
-migration. Stage: 3 = 3.1, 4 = 3.2, 5 = 3.3 then 3.4.
+clean-slate reset. Stage: 3 = 3.1, 4 = 3.2, 5 = 3.3 then 3.4.
 
 ### 4.1 Created
 
@@ -879,6 +905,7 @@ migration. Stage: 3 = 3.1, 4 = 3.2, 5 = 3.3 then 3.4.
 |---|---|---|
 | `docs/spec-v2.md` | 1 | this file |
 | `testdata/rule-vectors.json` | 3.1 | frozen from `dfc3b28`; consumed by Go + TS tests |
+| `testdata/schema-version.txt` | 3.1 | contains `2`; **3.4 reads it** to pin the Go constant to the same value as the TS one (ordering: stage 5 after stage 3) |
 | `web/src/types.ts` | 3.1 | the §3.3 types only |
 | `web/src/rules.ts` | 3.1 | 1:1 port of `internal/game/game.go` |
 | `web/src/model.ts` | 3.1 | pure mutations, `GameError` |
@@ -910,28 +937,21 @@ migration. Stage: 3 = 3.1, 4 = 3.2, 5 = 3.3 then 3.4.
 | `web/src/pwa.ts` | 3.3 | registration, update bar, persist, estimate, chip |
 | `web/src/sw.ts` | 3.3 | the SW (§3.7) |
 | `web/src/api.ts` | 3.3 | publish/fetch/share |
-| `web/src/backup.ts` | 3.3 | JSON export/import |
+| `web/src/backup.ts` | 3.3 | JSON export/import for **new** snapshots — the user's own backup. **Not** a legacy importer: it accepts only `schemaVersion === SCHEMA_VERSION` and has no legacy path. 3.4 must not delete it as "compatibility code". |
 | `web/pwa/manifest.json` | 3.3 | source manifest |
 | `web/pwa/icon.svg` | 3.3 | icon source |
 | `scripts/gen-precache.mjs` | 3.3 | precache writer |
 | `scripts/gen-icons.mjs` | 3.3 | one-off PNG generation (not in `build`) |
 | `internal/assets/static/**` (generated, committed) | build | `index.html`, `app.js`, `app.css`, `sw.js`, `manifest.json`, `precache.json`, `icons/*.png`; regenerated by whichever unit last changed an input, never hand-edited |
 | `internal/assets/embed.go` | 3.4 | `//go:embed all:static` |
-| `internal/db/store.go` | 3.4 | snapshot store |
+| `internal/db/store.go` | 3.4 | snapshot store + `meta.schema_version`; refuses to start on a version it does not know (§5.3) |
 | `internal/handlers/api.go` | 3.4 | `POST/GET /api/games` |
 | `internal/handlers/share.go` | 3.4 | `/s/{id}`, inline template, zero JS |
 | `internal/handlers/health.go` | 3.4 | `/healthz` |
 | `internal/handlers/errors.go` | 3.4 | Dutch 404/400 helpers |
 | `internal/version/version.go` | 3.4 | `Version = "2.0.0"`, `Commit` set by ldflags |
-| `cmd/migrate/main.go` | 3.4 | CLI (§5) |
-| `internal/migration/migrate.go` | 3.4 | legacy reader + mapping |
-| `internal/migration/verify.go` | 3.4 | per-game comparison, exit code |
-| `internal/migration/migrate_test.go` | 3.4 | fixture-backed, non-empty; `-update` regenerates the binaries |
-| `internal/migration/testdata/legacy-schema.sql` | 3.4 | three legacy shapes (A/B/C, §5.2) |
-| `internal/migration/testdata/legacy-rows.sql` | 3.4 | ≥5 games: bidding, playing, round_summary, game_over, short/early-end, one unrepresentable (must be reported) |
-| `internal/migration/testdata/legacy-v1.sqlite` | 3.4 | generated from the `.sql` by the test helper, committed; shape A with rows |
-| `internal/migration/testdata/legacy-v2.sqlite` | 3.4 | generated, committed; shape B (current code) with rows |
 | `scripts/verify/js-off.mjs` | 3.4 | AC-25, JS-disabled render |
+| `scripts/verify/make-snapshot.mjs` | 3.4 | AC-24: prints one valid `schemaVersion:2` snapshot |
 | `docs/verify/*` | 6, 7, 8 | evidence artifacts for the gates |
 
 ### 4.2 Changed
@@ -958,7 +978,9 @@ migration. Stage: 3 = 3.1, 4 = 3.2, 5 = 3.3 then 3.4.
 `index.html`, `offline.html`, `player_row.html`, `scoreboard.html`, `scoreboard_oob.html`,
 `summary.html`, `summary_composite.html`, `tricks.html` (the whole directory);
 `static/offline.js`; `build.sh`; `static/.gitkeep` (3.3); `static/icon-192.svg`,
-`static/icon-512.svg` (3.3, moved to `web/pwa/` as a single SVG source).
+`static/icon-512.svg` (3.3, moved to `web/pwa/` as a single SVG source);
+`data/db.sqlite`, `data/db.sqlite-wal`, `data/db.sqlite-shm` (the 0-row legacy fixture — a
+clean slate keeps no stale schema in the tree; the host backup is the safety net, §5.1).
 
 The old `static/sw.js` is not "deleted then recreated": the whole root `static/` directory
 is removed and the generated assets live under `internal/assets/static/`. The deletion
@@ -978,97 +1000,131 @@ No other file is touched by two units.
 
 ---
 
-## 5. Data migration plan
+## 5. Clean slate — back up once, start empty
 
-### 5.1 Source and safety
+**Decision (parent §8.4, rev 8).** The existing game data is disposable. There is **no
+migration, no importer, no legacy schema mapping and no compatibility layer**. The effort
+goes into the new data model being clean and versioned. The old SQLite volume is copied
+aside **once** as a safety net and listed before anything is wiped.
 
-- **Source of truth for real data:** the Dokploy volume `/data/db.sqlite` (`+ -wal`,
-  `+ -shm`) on the host. The repo copy has **0 rows** (§2.8) and is only a schema sample.
-- **Never open the original for writing.** Stage 7 copies all three files to
-  `/data/backup-YYYYMMDD/`, `chmod 0444`, and prints `sha256sum` for both sides. Only the
-  copy is opened. The new server uses a **new path**, `/data/snapshots.sqlite`; the legacy
-  file is left exactly where it is. There is no in-place migration, ever.
-- The migration CLI opens the copy with `PRAGMA query_only=ON`, runs
-  `PRAGMA wal_checkpoint(TRUNCATE)` first (so the WAL is folded into the copy), then
-  `PRAGMA integrity_check`, and aborts if it is not `ok`.
+This supersedes the parent's §7 sentence *"Back up before migrating data … the existing
+games are real people's games."* The backup is still mandatory — deleting the data is
+approved, losing it *unintentionally* is not — but it is a one-shot archive, not a source
+to convert.
 
-### 5.2 Read path
+### 5.1 What the reset deletes
 
-```sql
-SELECT id, current_round, phase, direction, [max_cards], [total_rounds], created_at
-  FROM games ORDER BY id;
-SELECT id, game_id, name, position FROM players ORDER BY game_id, position;
-SELECT game_id, round_number, player_id, bid, tricks_won, score
-  FROM round_results ORDER BY game_id, round_number;
+Only the legacy database files inside the app's `/data` volume:
+
+```
+/data/db.sqlite
+/data/db.sqlite-wal
+/data/db.sqlite-shm
 ```
 
-The brackets around `[max_cards]` / `[total_rounds]` mean "include this column only if
-`PRAGMA table_info(games)` shows it". Legacy shapes are detected with that pragma:
+Nothing else in the volume is removed. No `rm -rf`. The new server writes a **new** file,
+`/data/snapshots.sqlite`; it never opens `db.sqlite`. The repo's own `data/db.sqlite*`
+(0 rows, stale schema) is deleted in unit 3.4 so the tree carries no stale schema at all.
 
-| Shape | Columns | Handling |
-|---|---|---|
-| A (initial) | `direction`, `total_rounds`, no `max_cards` | infer `maxCards` (§5.3) |
-| B (current code) | `direction`, `max_cards` | use `max_cards` (0 → natural) |
-| C (oldest) | neither | `maxCards = 0`; no `total_rounds` to check, so require every round number to be in the natural sequence |
+### 5.2 Reset runbook (stage 7 — exact commands)
 
-### 5.3 Missing `max_cards` — inference, not a guess
+The container is stopped first, so the `-wal` is quiescent and the copy is consistent.
 
-For a legacy game with no `max_cards`, find the smallest cap `c ∈ 1..⌊52/n⌋` such that
-`TotalRounds(n, direction, c) == total_rounds`. If exactly one `c` matches, use it. If none
-or several match, **skip the game** with reason `max_cards_unresolvable` — do not invent a
-sequence, because the per-round card counts (and therefore every bid/trick validity check)
-depend on it. When `total_rounds` is absent, use `maxCards = 0` and require every completed
-round's number to be within the natural sequence.
+```bash
+CID=$(docker ps -a --filter name=randomprojects-boerenbridgescorenboord \
+        --format '{{.ID}}' | head -1)
+VOL=$(docker inspect "$CID" \
+        --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}')
+test -n "$VOL" || { echo 'no /data mount — stop and report'; exit 1; }
 
-### 5.4 Mapping to the snapshot
+docker stop "$CID"
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+mkdir -p "$VOL/backup-$STAMP"
+cp -a "$VOL"/db.sqlite "$VOL"/db.sqlite-wal "$VOL"/db.sqlite-shm \
+      "$VOL/backup-$STAMP"/ 2>/dev/null || true
+test -f "$VOL/backup-$STAMP/db.sqlite" || { echo 'no db.sqlite in the volume — stop and report'; exit 1; }
+( cd "$VOL/backup-$STAMP" && sha256sum db.sqlite* > SHA256SUMS \
+  && sha256sum -c SHA256SUMS && ls -l )
+# paste the `ls -l` and the checksum verification into the issue BEFORE deleting anything
 
-| Legacy | Snapshot |
+rm -f "$VOL/db.sqlite" "$VOL/db.sqlite-wal" "$VOL/db.sqlite-shm"
+test ! -e "$VOL/db.sqlite" && echo 'legacy files gone; backup kept at'"$VOL/backup-$STAMP"
+```
+
+Then deploy the new image (stage 7's normal Dokploy path). On first start the server
+creates `/data/snapshots.sqlite`, writes `schema_version = 2`, and stores nothing else.
+
+If the container cannot be stopped in that environment, copy with the app running only
+after `PRAGMA wal_checkpoint(TRUNCATE)` on a copy — but stopping is the default and the
+only path this spec accepts as evidence.
+
+### 5.3 The store: empty, versioned, and it refuses to guess
+
+```sql
+CREATE TABLE IF NOT EXISTS meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS snapshots (
+  id             TEXT PRIMARY KEY,
+  schema_version INTEGER NOT NULL,
+  revision       INTEGER NOT NULL,
+  published_at   TEXT NOT NULL,
+  updated_at     TEXT NOT NULL,
+  body           BLOB NOT NULL
+);
+```
+
+On open:
+
+- store empty → insert `schema_version = <current>` (`2`), create the tables, continue;
+- `schema_version == current` → serve;
+- `schema_version != current` → **refuse to start** with a Dutch error that says a backup
+  must be made and the store reset. There is no upgrade path in this release, by design.
+  A version mismatch is a human decision, not an automatic conversion.
+
+`SCHEMA_VERSION` has exactly one value per side and the two are pinned to the same file:
+`testdata/schema-version.txt` (`2`), read by the Go test and the `node --test` suite. A
+drift between `web/src/types.ts` and `internal/db/store.go` fails both suites.
+
+### 5.4 How the version is surfaced
+
+| Surface | Shape |
 |---|---|
-| `games.id` | `legacy.id`; `id` = new UUID v4 |
-| `games.created_at` | `createdAt` (RFC3339; parse `YYYY-MM-DD HH:MM:SS` as UTC) |
-| `players` ordered by `position` | `setup.players[]` with `seat = index`, `id` = new UUID |
-| `games.direction` | `setup.direction` |
-| `max_cards` / inferred | `setup.maxCards` |
-| `games.phase = bidding` | `pending = {round: current_round, cards, bids: null}` |
-| `games.phase = playing` | `pending = {round: current_round, cards, bids: [...]}` from `round_results` |
-| `games.phase = round_summary` | `rounds` includes `current_round`; `pending` = `current_round+1` if ≤ total, else `null` + finished |
-| `games.phase = game_over` | `phase = 'finished'`, `pending = null` |
-| each `round_results` with `score IS NOT NULL` | one `CompletedRound` with bids/tricks/scores ordered by seat |
-| a round with bids but no tricks | `pending` with those bids (only legal for `current_round`) |
-| `round_results.score` | compared with `calculateScore(bid, tricks)`; mismatch → **skip the game** with `score_mismatch` and both values in the report |
+| `GET /healthz` | `{"status":"ok","commit":"…","version":"2.0.0","schema_version":2}` |
+| `POST /api/games` response | `{"id":"…","revision":N,"schema_version":2}` |
+| Snapshot JSON | top-level `"schemaVersion": 2`, validated on write and on import |
+| App footer | `versie 2.0.0 · opslag v2 · <storage estimate>` |
+| `GET /api/games/{id}` | the stored body verbatim, so its `schemaVersion` is visible |
 
-Validation before writing: `rounds` contiguous from 1, `cards == CardsForRound(round, ...)`,
-`tricks` sum == cards, completed-round bids sum ≠ cards, array lengths == player count.
-Anything unrepresentable is **listed, not dropped**: `report.json` has an entry per source
-game with `status: migrated | skipped` and a `reason`.
+`cmd/server -dbinfo` opens `DB_PATH`, prints `schema_version=<n> snapshots=<count>` and
+exits — the command the Verifier uses to prove the fresh store is empty and versioned:
 
-### 5.5 Output and import
+```
+$ docker exec <container> /boerenbridge -dbinfo
+schema_version=2 snapshots=0
+```
 
-- `migrated/<legacyID>-<slug>.json` — one snapshot per game.
-- `migrated/backup-<YYYY-MM-DD>.json` — `{"schemaVersion":2,"exportedAt":"...","games":[...]}`.
-  **This is the file the user imports**; it is the same shape as the in-app export, so there
-  is exactly one import path.
-- `migrated/report.json` — source counts, migrated count, skipped list with reasons, and the
-  `max_cards` inference per game.
-- Import (`web/src/backup.ts`): validate `schemaVersion`, every game, and show a summary
-  ("12 spellen, 3 overgeslagen") **before** writing. Duplicate id → new local id, `legacy`
-  preserved; never overwrite an existing game without an explicit confirmation.
-- Import is not idempotent: re-importing the same bundle duplicates games. The UI therefore
-  warns when `exportedAt` matches an earlier import (stored in `meta`) and offers to skip
-  games whose `legacy.id` is already present. It never dedupes silently by name.
+### 5.5 Explicitly not built
 
-### 5.6 What "no data loss" is checked against
+- No `cmd/migrate`, no `internal/migration`, no legacy reader, no shape detection, no
+  `max_cards` inference, no legacy id mapping, no `report.json`.
+- No importer for old rows, and no code that can read the old schema.
+- The in-app **JSON export/import** (`web/src/backup.ts`) stays: it is the user's own
+  backup of *new* snapshots (§4.3 of the work order), not a legacy importer. Unit 3.3 must
+  not delete it, and unit 3.4 must not treat it as compatibility code.
 
-`cmd/migrate -verify` re-reads the source copy and the migrated JSON and compares, per game:
+### 5.6 What proves the reset (AC-12)
 
-1. player count, names and seat order;
-2. number of completed rounds and each round's `round_number`, `bid`, `tricks_won`;
-3. per-player `SUM(score)` and the game `SUM(score)`;
-4. `cards` per round against `CardsForRound` computed by the Go reference;
-5. every source game id appears exactly once in the report (migrated or skipped with reason).
+Three independent facts, all pasted into the delivering issue:
 
-It prints a per-game table and exits non-zero on any mismatch. AC-12 requires: source row
-counts, target game count, the table, and one game compared field by field.
+1. the dated backup directory exists, is listed with `ls -l`, and its `SHA256SUMS` verify;
+2. the new store reports `schema_version=2 snapshots=0` (`-dbinfo`) and `/healthz` echoes
+   the version;
+3. `grep -rn 'legacy\|import.*game\|migrat' --include=*.go` finds no compatibility code.
+
+Deleting the data is approved; losing it unintentionally is not.
 
 ---
 
@@ -1081,8 +1137,6 @@ Go commands use the Docker fallback (§2.9). Define these once in your shell:
 
 ```bash
 goq()  { docker run --rm -v "$PWD":/src -w /src -e CGO_ENABLED=0 \
-           golang:1.23-alpine "$@"; }
-goqm() { docker run --rm -v "$PWD":/src -v /tmp/mig:/mig -w /src -e CGO_ENABLED=0 \
            golang:1.23-alpine "$@"; }
 ```
 
@@ -1231,28 +1285,40 @@ node scripts/verify/persist.mjs $B --offline-server    # reload + screenshot
 
 Pass: connection refused, then the shell still loads and a round can be submitted; screenshot.
 
-**AC-12 — existing data migrates without loss.** Owner: **5** (3.4 tool) + **7** (real copy).
+**AC-12 — the reset is deliberate, not accidental.** Owner: **5** (3.4: no compatibility
+code, versioned empty store) + **7** (host backup + wipe), re-checked **8**.
+
+Criterion, verbatim from parent rev 8:
+
+> The reset is deliberate, not accidental: the old `data/*.sqlite` is copied once to a dated
+> backup path on the host and the copy is listed (`ls -l`) in the issue before anything is
+> wiped; the fresh store reports its `schema_version`; and
+> `grep -rn 'legacy\|import.*game\|migrat' --include=*.go` finds no compatibility code.
+> Deleting the old data is approved — losing it *unintentionally* is not.
 
 ```
-mkdir -p /tmp/mig && cp data/db.sqlite* /tmp/mig/ && chmod -w /tmp/mig/db.sqlite*
-# the repo copy has 0 rows; prove the tool on BOTH committed legacy fixtures:
-for f in legacy-v1 legacy-v2; do
-  goqm go run ./cmd/migrate -src /src/internal/migration/testdata/$f.sqlite -out /mig/$f
-  goqm go run ./cmd/migrate -verify -src /src/internal/migration/testdata/$f.sqlite -in /mig/$f
-done
-# and record the real source counts (stage 7 does the same on the host copy):
-python3 - <<'EOF'
-import sqlite3; c=sqlite3.connect('/tmp/mig/db.sqlite')
-print({t:c.execute(f'select count(*) from {t}').fetchone()[0] for t in ('games','players','round_results')})
-print([r[1] for r in c.execute('PRAGMA table_info(games)')])
-EOF
+# 1. no compatibility code, no migration package, no stale schema in the tree
+grep -rn 'legacy\|import.*game\|migrat' --include=*.go \
+  --exclude-dir=node_modules --exclude-dir=.git .          # expect no output
+test ! -e cmd/migrate && test ! -e internal/migration && echo 'NO MIGRATION PACKAGES'
+test ! -e data/db.sqlite && echo 'STALE REPO DB DELETED'
+
+# 2. the fresh store is empty and versioned (after the first start on the host)
+docker exec <container> /boerenbridge -dbinfo              # schema_version=2 snapshots=0
+curl -fsS $B/healthz | python3 -m json.tool                # "schema_version": 2
+curl -sS -o /dev/null -w '%{http_code}\n' $B/api/games/does-not-exist   # 404
+
+# 3. the backup exists, is listed, and verifies (stage 7; paste into the issue)
+VOL=$(docker inspect <container> \
+        --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}')
+ls -l "$VOL"/backup-* && ( cd "$VOL"/backup-* && sha256sum -c SHA256SUMS )
 ```
 
-Pass: for each fixture, the verify table shows every source game migrated (or skipped with
-a stated reason), equal per-player `SUM(score)`, equal per-round bids/tricks, and exit 0.
-The report must name the deliberately unrepresentable fixture game instead of dropping it.
-Stage 7 repeats on the host copy and states the real before/after counts. **If the host
-volume is also empty, say so**; do not claim games were migrated.
+Pass: zero grep hits (`NO MIGRATION PACKAGES`, `STALE REPO DB DELETED`), `schema_version=2
+snapshots=0`, `/healthz` echoes 2, an unknown id returns 404, and the backup directory is
+listed with a checksum file that verifies. If the only grep hit is a Go import of
+`internal/game`, the build must remove that import — not explain it away. The wipe runs
+**after** the `ls -l` and checksum output is pasted (§5.2).
 
 **AC-13 — Lighthouse mobile.** Owner: **8**.
 
@@ -1389,9 +1455,8 @@ Pass: `copy.ts` is the only place user-visible strings live; it uses `biedingen`
 **AC-24 — publish/fetch round-trip, 400 on malformed.** Owner: **5** (3.4).
 
 ```
-# a valid snapshot: take the first migrated game from the AC-12 bundle
-python3 -c "import json,glob;b=json.load(open(sorted(glob.glob('/tmp/mig/legacy-v2/backup-*.json'))[-1]));
-json.dump(b['games'][0],open('/tmp/game.json','w'))"
+# a valid snapshot, built from the same types the client emits
+node scripts/verify/make-snapshot.mjs > /tmp/game.json
 ID=$(curl -fsS -X POST $B/api/games -H 'Content-Type: application/json' -d @/tmp/game.json | node -pe 'JSON.parse(require("fs").readFileSync(0)).id')
 curl -fsS $B/api/games/$ID | node -pe 'JSON.parse(require("fs").readFileSync(0)).id'
 curl -sS -o /tmp/err.json -w '%{http_code}\n' -X POST $B/api/games \
@@ -1441,8 +1506,8 @@ Carried from §2 of the work order, plus what this re-verification adds.
 5. Analytics, telemetry, error reporting, A/B tests.
 6. i18n framework; Dutch hard-coded in `copy.ts` only.
 7. DNS, domain purchase, TLS provisioning, Traefik/router changes.
-8. Migrating the *running* deployment's process, volume layout, or container name; stage 7
-   backs up and deploys the image, nothing else.
+8. Moving the *running* deployment's process, volume layout, or container name; stage 7
+   backs up, wipes the legacy files, and deploys the image — nothing else.
 9. Server-side game listing, search, pagination, accounts or access control on `/api/*`.
    Published snapshots are unlisted-by-UUID; that is the whole access model. (If guessing
    UUIDs is a concern, it is a separate ticket — see §8.)
@@ -1450,9 +1515,10 @@ Carried from §2 of the work order, plus what this re-verification adds.
     force-pushing; touching `main` directly.
 11. A native app, PWA push, background sync, periodic background fetch.
 12. Charts beyond the ≤40-line inline SVG (if the designer keeps one at all).
-13. Importing games from anywhere other than the legacy SQLite copy and the app's own JSON
-    export.
-14. Fixing the legacy `data/db.sqlite` in place, or making the new server read it.
+13. Importing games from anything except the app's own JSON export. There is no legacy
+    importer, no compatibility reader and no conversion path — by decision (§5, AC-12).
+14. Reading, repairing or serving the legacy `data/*.sqlite`. It is backed up once and
+    deleted; the server never opens it.
 
 ---
 
@@ -1461,13 +1527,12 @@ Carried from §2 of the work order, plus what this re-verification adds.
 Each has a recommendation, the cost of being wrong, and whether it blocks 3.1. **None
 blocks 3.1.**
 
-**Q1 — Where is the real game data, and does it exist at all?**
-The repo DB has 0 rows; the deployed volume is unverified from here.
-*Recommendation:* stage 7 copies `/data/db.sqlite*`, checksums it, and migrates the copy;
-if it is empty, say so and let AC-12 rest on the synthetic fixture. *Cost if wrong:* if the
-volume has an unanticipated schema (e.g. a `total_rounds` that no `max_cards` explains),
-those games are reported as skipped instead of migrated — visible, not silent. *Blocks
-3.1:* no.
+**Q1 — Does the committed 0-row legacy DB stay in the repo, or get deleted in 3.4?**
+*Recommendation:* **delete `data/db.sqlite*` in 3.4.** A clean slate should not keep a
+stale schema in the tree, the host backup is the safety net (§5.2), and keeping it invites
+someone to write an importer later. *Cost if wrong:* if anyone ever wanted the old schema
+as a reference, it is still in git history (`git show b2b8579:data/db.sqlite` and the later
+commits) and in the dated host backup. *Blocks 3.1:* no.
 
 **Q2 — `POST /api/games` create-only or upsert?**
 *Recommendation:* upsert by client UUID with `revision` compare; 409 on stale.
@@ -1494,23 +1559,11 @@ but not required; no OPFS; no `beforeinstallprompt` dependency). *Blocks 3.1:* n
 
 **Q6 — Blind-rule message wording differs between Go and TS.**
 *Recommendation:* parity is on the boolean outcome, not the string; the UI string is
-`Biedingen mogen niet samen exact N zijn (blinde regel).` The Go message stays as it is
-(it is only used by the migration verifier after 3.4). *Cost if wrong:* two Dutch sentences
-exist in the repo for one rule; no user sees the Go one. *Blocks 3.1:* no.
+`Biedingen mogen niet samen exact N zijn (blinde regel).` The Go message stays as it is (it
+is reachable only from `internal/game`'s own tests after 3.4). *Cost if wrong:* two Dutch
+sentences exist in the repo for one rule; no user sees the Go one. *Blocks 3.1:* no.
 
-**Q7 — `maxCards` inference for legacy games without the column.**
-*Recommendation:* infer from `total_rounds` only when exactly one cap matches (§5.3);
-otherwise skip with a reported reason. *Cost if wrong:* a capped legacy game is listed as
-skipped and the user re-enters it by hand — better than silently wrong card counts.
-*Blocks 3.1:* no.
-
-**Q8 — Should `data/db.sqlite` stay in the repo?**
-*Recommendation:* keep it (it documents the legacy schema and is already tracked), exclude
-it from the image (`data/` is already in `.dockerignore`), and never write to it.
-*Cost if wrong:* a stale 76 KB fixture confuses a future reader; §2.8 explains it.
-*Blocks 3.1:* no.
-
-**Q9 — Who passes `GIT_SHA` to the Docker build?**
+**Q7 — Who passes `GIT_SHA` to the Docker build?**
 *Recommendation:* `ARG GIT_SHA=unknown` in the Dockerfile; stage 7 passes the merged SHA
 via the Dokploy build args and proves it in `/healthz`. *Cost if wrong:* `/healthz` says
 `unknown` and AC-26 fails at stage 8 — which is the correct outcome for an unproven build.
@@ -1532,12 +1585,15 @@ via the Dokploy build args and proves it in `/healthz`. *Cost if wrong:* `/healt
   `src/rules.ts`, `src/model.ts`, `src/store.ts`, `internal/**`, `web/src/sw.ts`,
   `web/pwa/**`, or the build script's PWA steps.
 - **Stage 5 (3.3 then 3.4)** lands two commits. 3.3 owns the PWA surface and the generated
-  `internal/assets/static/**`; 3.4 owns the Go rewrite, deletions, Dockerfile and migration. 3.3 must not
-  delete the old Go templates (3.4 does), and the precache list is explicit so a lingering
-  `offline.js` cannot be precached.
+  `internal/assets/static/**`; 3.4 owns the Go rewrite, deletions, Dockerfile and the
+  clean-slate store. 3.3 must not delete the old Go templates (3.4 does), must keep
+  `web/src/backup.ts` (the user's JSON backup, not a legacy importer), and the precache list
+  is explicit so a lingering `offline.js` cannot be precached.
 - **Stage 6 (Quality)** verifies §6 by reading and re-running, not by trusting the PR text.
-- **Stage 7 (Deploy)** takes the backup, migrates a copy, deploys only
-  `randomprojects-boerenbridgescorenboord-ddhofw`, and proves `/healthz`.
+- **Stage 7 (Deploy)** stops the container, copies `/data/db.sqlite*` once to
+  `/data/backup-<stamp>/`, lists it and verifies `SHA256SUMS`, **then** deletes the three
+  legacy files, deploys only `randomprojects-boerenbridgescorenboord-ddhofw`, and proves an
+  empty versioned store (`-dbinfo`, `/healthz`). No migration runs.
 - **Stage 8 (Verify)** treats `https://boeren.sooth.dev` as the system under test and says
   plainly what was not tested.
 
@@ -1575,7 +1631,7 @@ done
 cmp <(curl -sS https://boeren.sooth.dev/) <(curl -sS https://boeren.sooth.dev/nonexistent) && echo IDENTICAL
 openssl s_client -connect boeren.sooth.dev:443 -servername boeren.sooth.dev </dev/null 2>/dev/null | openssl x509 -noout -issuer -dates
 
-# data
+# data — this is the evidence that makes the wipe safe (§2.9, §5), not a migration step
 cp data/db.sqlite* /tmp/sqlcopy/
 python3 - <<'EOF'
 import sqlite3
