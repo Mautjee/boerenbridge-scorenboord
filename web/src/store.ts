@@ -1,4 +1,4 @@
-import type { Game } from './types.ts';
+import { SCHEMA_VERSION, type Game } from './types.ts';
 
 export interface GameStore {
   list(): Promise<Game[]>;
@@ -36,6 +36,10 @@ function cloneGame(game: Game): Game {
     })),
     pending: game.pending ? { ...game.pending, bids: game.pending.bids ? [...game.pending.bids] : null } : null,
   };
+}
+
+function isCurrentSchema(game: Game): boolean {
+  return game.schemaVersion === SCHEMA_VERSION;
 }
 
 function newestFirst(a: Game, b: Game): number {
@@ -113,14 +117,14 @@ export class IndexedDbStore implements GameStore {
     const db = await this.open();
     const request = db.transaction('games', 'readonly').objectStore('games').getAll() as IDBRequest<Game[]>;
     const games = await requestToPromise(request);
-    return games.map(cloneGame).sort(newestFirst);
+    return games.filter(isCurrentSchema).map(cloneGame).sort(newestFirst);
   }
 
   async get(id: string): Promise<Game | null> {
     const db = await this.open();
     const request = db.transaction('games', 'readonly').objectStore('games').get(id) as IDBRequest<Game | undefined>;
     const game = await requestToPromise(request);
-    return game ? cloneGame(game) : null;
+    return game !== undefined && isCurrentSchema(game) ? cloneGame(game) : null;
   }
 
   async save(game: Game): Promise<Game> {

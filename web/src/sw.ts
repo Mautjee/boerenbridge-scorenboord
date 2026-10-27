@@ -30,7 +30,6 @@ interface WorkerScope {
 
 const worker = self as unknown as WorkerScope;
 const CACHE_NAME = __CACHE_NAME__;
-const CORE_URLS = ['/', '/static/app.js', '/static/app.css'];
 
 function logFailure(url: string, error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
@@ -134,6 +133,9 @@ worker.addEventListener('fetch', (event) => {
   if (url.origin !== worker.location.origin) {
     return;
   }
+  if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
+    return;
+  }
   if (url.pathname === '/static/sw.js') {
     return;
   }
@@ -149,5 +151,3 @@ worker.addEventListener('message', (event) => {
     }
   }
 });
-
-export { CORE_URLS };

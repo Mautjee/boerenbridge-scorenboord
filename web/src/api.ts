@@ -1,5 +1,5 @@
 import { API } from './copy.ts';
-import type { Game } from './types.ts';
+import { SCHEMA_VERSION, type Game } from './types.ts';
 
 export type PublishResult =
   | { ok: true; id: string; revision: number }
@@ -23,6 +23,9 @@ export async function publish(game: Game): Promise<PublishResult> {
       body: JSON.stringify(game),
     });
     const payload: unknown = await response.json().catch(() => null);
+    if (response.status === 409) {
+      return { ok: true, id: game.id, revision: game.revision };
+    }
     if (!response.ok) {
       return { ok: false, message: errorMessage(payload, API.publishFailed) };
     }
@@ -48,6 +51,9 @@ export async function fetchSnapshot(id: string): Promise<Game | { error: string 
     }
     if (payload === null || typeof payload !== 'object') {
       return { error: API.fetchFailed };
+    }
+    if ((payload as { schemaVersion?: unknown }).schemaVersion !== SCHEMA_VERSION) {
+      return { error: API.wrongSchema };
     }
     return payload as Game;
   } catch {

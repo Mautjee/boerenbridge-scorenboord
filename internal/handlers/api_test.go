@@ -185,6 +185,50 @@ func TestPublishRejectsBadInput(t *testing.T) {
 	}
 }
 
+func TestPublishRejectsMisalignedSeats(t *testing.T) {
+	mux, _ := testMux(t)
+	body := validSnapshot(t)
+
+	var snapshot map[string]any
+	if err := json.Unmarshal(body, &snapshot); err != nil {
+		t.Fatalf("parse snapshot: %v", err)
+	}
+	players := snapshot["setup"].(map[string]any)["players"].([]any)
+	for left, right := 0, len(players)-1; left < right; left, right = left+1, right-1 {
+		players[left], players[right] = players[right], players[left]
+	}
+	misaligned, err := json.Marshal(snapshot)
+	if err != nil {
+		t.Fatalf("marshal reversed snapshot: %v", err)
+	}
+
+	rejected := do(mux, http.MethodPost, "/api/games", "application/json", misaligned)
+	if rejected.Code != http.StatusBadRequest {
+		t.Fatalf("reversed players = %d, want 400", rejected.Code)
+	}
+	if !strings.Contains(rejected.Body.String(), "plek") {
+		t.Fatalf("reversed players body = %s", rejected.Body.String())
+	}
+
+	published := do(mux, http.MethodPost, "/api/games", "application/json", body)
+	if published.Code != http.StatusCreated {
+		t.Fatalf("aligned players = %d, want 201", published.Code)
+	}
+	share := do(mux, http.MethodGet, "/s/"+testID, "", nil)
+	if share.Code != http.StatusOK {
+		t.Fatalf("share status = %d", share.Code)
+	}
+	html := share.Body.String()
+	for _, needle := range []string{
+		"<th>Sanne</th><td>-3</td><td>-3</td><td>-6</td>",
+		"<th>Mauro</th><td>10</td><td>13</td><td>23</td>",
+	} {
+		if !strings.Contains(html, needle) {
+			t.Errorf("share page does not pair %q with its own scores: %s", needle, html)
+		}
+	}
+}
+
 func TestUnknownPathsAreReal404s(t *testing.T) {
 	mux, _ := testMux(t)
 

@@ -122,12 +122,30 @@ export function parseBackup(text: string): Game[] {
   return games;
 }
 
-export async function importGames(store: GameStore, games: Game[]): Promise<Game[]> {
+export interface ImportOutcome {
+  saved: Game[];
+  skipped: Game[];
+}
+
+function isNewer(incoming: Game, stored: Game): boolean {
+  if (incoming.revision !== stored.revision) {
+    return incoming.revision > stored.revision;
+  }
+  return incoming.updatedAt > stored.updatedAt;
+}
+
+export async function importGames(store: GameStore, games: Game[]): Promise<ImportOutcome> {
   const saved: Game[] = [];
+  const skipped: Game[] = [];
   for (const game of games) {
+    const stored = await store.get(game.id);
+    if (stored !== null && !isNewer(game, stored)) {
+      skipped.push(game);
+      continue;
+    }
     saved.push(await store.save(game));
   }
-  return saved;
+  return { saved, skipped };
 }
 
 export function downloadText(text: string, filename: string): void {

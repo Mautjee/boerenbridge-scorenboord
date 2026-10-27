@@ -158,6 +158,5 @@ export function afgelopenView(ctx: GameViewContext): HTMLElement {
 
   resultGrid.appendChild(right);
   root.appendChild(resultGrid);
-  void ctx;
   return root;
 }

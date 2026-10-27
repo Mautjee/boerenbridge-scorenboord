@@ -187,8 +187,12 @@ function appFooter(ctx: ViewContext): HTMLElement {
       try {
         const text = await file.text();
         const imported = parseBackup(text);
-        const saved = await importGames(ctx.store, imported);
-        toast(PWA.importDone(saved.length));
+        const outcome = await importGames(ctx.store, imported);
+        toast(
+          outcome.skipped.length === 0
+            ? PWA.importDone(outcome.saved.length)
+            : PWA.importKept(outcome.saved.length, outcome.skipped.length),
+        );
         await ctx.reload();
       } catch (error) {
         toast(error instanceof Error ? error.message : PWA.importFailed);

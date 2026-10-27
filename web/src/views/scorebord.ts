@@ -138,13 +138,13 @@ export function scorebordView(ctx: GameViewContext): HTMLElement {
     root.appendChild(
       el(
         'div',
-        { style: 'margin-bottom:20px' },
+        { class: 'finished-banner' },
         el(
           'div',
           { class: 'card card--accent' },
           el(
             'div',
-            { class: 'section__head', style: 'margin-bottom:4px' },
+            { class: 'section__head finished-banner__head' },
             el('h2', { class: 'result-banner__title' }, SCOREBORD.finishedTitle),
             el(
               'span',

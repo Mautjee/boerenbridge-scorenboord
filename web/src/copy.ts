@@ -253,6 +253,10 @@ export const PWA = {
   exportDone: 'JSON-bestand gedownload.',
   exportFailed: 'Exporteren lukte niet.',
   importDone: (count: number) => `${count} ${count === 1 ? 'spel' : 'spellen'} teruggezet.`,
+  importKept: (saved: number, skipped: number) =>
+    saved === 0
+      ? `${skipped} ${skipped === 1 ? 'spel' : 'spellen'} overgeslagen: de versie op dit toestel is nieuwer.`
+      : `${saved} teruggezet, ${skipped} overgeslagen: de versie op dit toestel is nieuwer.`,
   importFailed: 'Importeren lukte niet.',
   backupInvalid: 'Dit is geen geldig Boerenbridge-back-upbestand.',
   backupVersion: (found: number) => `Deze back-up heeft opslagversie ${found}; deze app leest alleen versie ${SCHEMA_VERSION}.`,
@@ -263,6 +267,7 @@ export const PWA = {
 export const API = {
   publishFailed: 'Publiceren lukte niet.',
   fetchFailed: 'Dit spel kon niet worden opgehaald.',
+  wrongSchema: 'Dit spel is opgeslagen met een andere versie van de app.',
   offline: 'Geen verbinding — probeer het opnieuw als je online bent.',
 };
 

@@ -57,9 +57,51 @@ test('importing a backup writes every game through the store', async () => {
   const store = new MemoryStore();
   const [game] = parseBackup(serializeBackup([finishedGame()], NOW));
 
-  const saved = await importGames(store, [game!]);
+  const outcome = await importGames(store, [game!]);
 
-  assert.equal(saved.length, 1);
+  assert.equal(outcome.saved.length, 1);
+  assert.equal(outcome.skipped.length, 0);
   assert.equal((await store.list()).length, 1);
   assert.equal((await store.get(game!.id))?.revision, game!.revision);
+});
+
+test('importing an older copy leaves newer local progress alone', async () => {
+  const store = new MemoryStore();
+  const local = { ...finishedGame(), revision: 5 };
+  await store.save(local);
+  const incoming = { ...local, revision: 4, updatedAt: '2000-01-01T00:00:00.000Z' };
+
+  const outcome = await importGames(store, [incoming]);
+
+  assert.equal(outcome.saved.length, 0);
+  assert.equal(outcome.skipped.length, 1);
+  assert.equal(outcome.skipped[0]!.id, local.id);
+  assert.equal((await store.get(local.id))?.revision, 5);
+});
+
+test('importing a newer revision replaces the stored game', async () => {
+  const store = new MemoryStore();
+  const local = { ...finishedGame(), revision: 5 };
+  await store.save(local);
+  const incoming = { ...local, revision: 6 };
+
+  const outcome = await importGames(store, [incoming]);
+
+  assert.equal(outcome.saved.length, 1);
+  assert.equal(outcome.skipped.length, 0);
+  assert.equal((await store.get(local.id))?.revision, 6);
+});
+
+test('at an equal revision only a newer updatedAt is accepted', async () => {
+  const store = new MemoryStore();
+  const local = { ...finishedGame(), revision: 7 };
+  await store.save(local);
+
+  const older = await importGames(store, [{ ...local, updatedAt: '2000-01-01T00:00:00.000Z' }]);
+  assert.equal(older.saved.length, 0);
+  assert.equal(older.skipped.length, 1);
+
+  const newer = await importGames(store, [{ ...local, updatedAt: '2030-01-01T00:00:00.000Z' }]);
+  assert.equal(newer.saved.length, 1);
+  assert.equal(newer.skipped.length, 0);
 });

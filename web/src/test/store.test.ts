@@ -66,6 +66,26 @@ test('IndexedDbStore uses the games store, sets updatedAt and survives a new sto
   assert.deepEqual(await store.list(), []);
 });
 
+test('IndexedDbStore hides games stored under another schema version', async () => {
+  const indexedDb = new FakeIndexedDB();
+  const store = new IndexedDbStore('boerenbridge', fakeFactory(indexedDb));
+  await store.list();
+
+  const games = indexedDb.seed('boerenbridge').stores.get('games');
+  assert.ok(games);
+  const game = makeGame();
+  games.put({ ...game, id: 'oude-versie', schemaVersion: game.schemaVersion - 1 });
+  await pause();
+
+  assert.deepEqual(await store.list(), []);
+  assert.equal(await store.get('oude-versie'), null);
+
+  await store.save(game);
+  const listed = await store.list();
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0]!.id, game.id);
+});
+
 test('IndexedDbStore round-trips the meta store', async () => {
   const indexedDb = new FakeIndexedDB();
   const store = new IndexedDbStore('boerenbridge', fakeFactory(indexedDb));

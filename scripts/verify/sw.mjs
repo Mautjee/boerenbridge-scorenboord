@@ -62,12 +62,14 @@ try {
   console.log('update bar:', barText.replace(/\s+/g, ' ').trim());
   assert.match(barText, /Nieuwe versie beschikbaar/);
 
+  const reloaded = page.waitForEvent('load', { timeout: 15000 });
   await page.getByRole('button', { name: 'Herladen' }).click();
+  await reloaded;
+  await page.waitForFunction(() => navigator.serviceWorker?.controller !== null, { timeout: 15000 });
   await page.waitForFunction(async () => {
     const names = await caches.keys();
     return names.includes('boerenbridge-update1');
   }, { timeout: 15000 });
-  await page.waitForTimeout(500);
 
   const after = await cacheState(page);
   console.log('cache names after:', Object.keys(after).join(', '));

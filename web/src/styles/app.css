@@ -1771,6 +1771,14 @@ a:focus-visible {
 
 /* ---------- scoreboard extras ---------- */
 
+.finished-banner {
+  margin-bottom: var(--space-5);
+}
+
+.finished-banner__head {
+  margin-bottom: var(--space-1);
+}
+
 .matrix__cards {
   display: block;
   color: var(--color-text-tertiary);

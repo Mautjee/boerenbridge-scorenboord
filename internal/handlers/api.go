@@ -105,16 +105,14 @@ func validateSnapshot(snapshot *gameSnapshot) error {
 	if snapshot.Setup.MaxCards < 0 || snapshot.Setup.MaxCards > 52 {
 		return errors.New("Ongeldig maximaal aantal kaarten.")
 	}
-	seats := make(map[int]bool, playerCount)
 	for index, player := range snapshot.Setup.Players {
 		name := strings.TrimSpace(player.Name)
 		if len(name) < 1 || len(name) > 40 {
 			return fmt.Errorf("Speler %d heeft een ongeldige naam.", index+1)
 		}
-		if player.Seat < 0 || player.Seat >= playerCount || seats[player.Seat] {
+		if player.Seat != index {
 			return fmt.Errorf("Speler %d heeft een ongeldige plek.", index+1)
 		}
-		seats[player.Seat] = true
 	}
 
 	for index, round := range snapshot.Rounds {
