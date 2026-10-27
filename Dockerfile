@@ -15,17 +15,30 @@ FROM golang:1.23-alpine AS build
 
 WORKDIR /src
 
+RUN apk add --no-cache git
+
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 COPY --from=web /src/internal/assets/static ./internal/assets/static
 
-ARG GIT_SHA=dev
+ARG GIT_SHA=
 
-RUN CGO_ENABLED=0 go test ./... \
+RUN set -eu; \
+    git --version; \
+    detected="$(git -C /src rev-parse --short HEAD 2>/dev/null || true)"; \
+    commit="${GIT_SHA:-${detected:-dev}}"; \
+    if [ -n "${GIT_SHA}" ]; then \
+        echo "build provenance: commit=${commit} (GIT_SHA override)"; \
+    elif [ -n "${detected}" ]; then \
+        echo "build provenance: commit=${commit} (from checkout)"; \
+    else \
+        echo "build provenance: commit=dev (no GIT_SHA and no readable checkout)"; \
+    fi; \
+    CGO_ENABLED=0 go test ./... \
     && CGO_ENABLED=0 go build \
-        -ldflags "-s -w -X boerenbridge-scorenboord/internal/version.Commit=${GIT_SHA}" \
+        -ldflags "-s -w -X boerenbridge-scorenboord/internal/version.Commit=${commit}" \
         -o /boerenbridge ./cmd/server
 
 FROM alpine:3.20
