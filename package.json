@@ -1,0 +1,13 @@
+{
+  "name": "boerenbridge-scorenboord",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --experimental-strip-types --test web/src/test/*.test.ts"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

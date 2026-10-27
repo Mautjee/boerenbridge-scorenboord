@@ -17,8 +17,8 @@ Een Boerenbridge scorebord-app gebouwd met Go, HTMX, Tailwind CSS en SQLite.
 
 - Ronde 1: 1 kaart per speler, ronde 2: 2 kaarten, ... tot max (⌊52 / spelers⌋), dan weer omlaag
 - **Blinde regel**: biedingen mogen NIET optellen tot exact het aantal slagen
-- **Bod gehaald**: 10 + 2 × aantal slagen
-- **Bod niet gehaald**: -2 × |bod - slagen|
+- **Bod gehaald**: 10 + 3 × bod
+- **Bod niet gehaald**: -3 × |bod - slagen|
 
 ## Ontwikkeling
 

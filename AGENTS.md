@@ -1,5 +1,8 @@
 # boerenbridge-scorenboord
 
+> **Let op:** de stack- en architectuurbeschrijving hieronder is de oude HTMX-opzet en
+> geldt niet meer als de huidige architectuur. Unit 3.4 vervangt deze tekst volledig.
+
 ## Project Overview
 Een Boerenbridge scorebord-app gebouwd met Go, HTMX, Tailwind CSS, SQLite, en Docker.
 
@@ -37,8 +40,8 @@ go.mod
 ## Spelregels (belangrijk voor implementatie)
 - Ronde 1: iedereen krijgt 1 kaart, ronde 2: 2 kaarten, ... tot max (floor(52 / aantal spelers)), dan weer terug omlaag (piramide)
 - Blinde regel: de biedingen mogen NIET optellen tot exact het totaal aantal slagen (laatste bieder mag dat bod niet doen)
-- Punten als je bod haalt: 10 + 2 per gewonnen slag
-- Punten als je bod NIET haalt: -2 per slag verschil (absoluut verschil)
+- Punten als je bod haalt: 10 + 3 × bod
+- Punten als je bod NIET haalt: -3 × |bod - slagen| (absoluut verschil)
 
 ## Conventions
 - Alle UI teksten in het Nederlands
