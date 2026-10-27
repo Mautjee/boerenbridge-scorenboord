@@ -176,7 +176,11 @@ function appFooter(ctx: ViewContext): HTMLElement {
     })();
   });
 
-  const fileInput = el('input', { type: 'file', class: 'visually-hidden' });
+  const fileInput = el('input', {
+    type: 'file',
+    class: 'visually-hidden',
+    'aria-label': PWA.fileInputAria,
+  });
   fileInput.accept = 'application/json,.json';
   fileInput.addEventListener('change', () => {
     const file = fileInput.files?.[0];
