@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f5ef">
+<title>Scorebord · Boerenbridge</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-state="progress">
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="suit-club" viewBox="0 0 24 24"><path d="M12 2a3.5 3.5 0 0 1 3.2 4.9 3.5 3.5 0 1 1 1.9 6.3c-.8 0-1.5-.3-2.1-.7.3 2.2 1.1 4 2.5 5.5H6.5c1.4-1.5 2.2-3.3 2.5-5.5-.6.4-1.3.7-2.1.7a3.5 3.5 0 1 1 1.9-6.3A3.5 3.5 0 0 1 12 2z"/></symbol>
+  <symbol id="suit-diamond" viewBox="0 0 24 24"><path d="M12 2l8 10-8 10-8-10z"/></symbol>
+  <symbol id="suit-spade" viewBox="0 0 24 24"><path d="M12 2c3 4 8 6.5 8 10.2 0 2.2-1.7 3.8-3.8 3.8-1.2 0-2.3-.5-3.2-1.4.1 2 .8 3.7 2 5.4H9c1.2-1.7 1.9-3.4 2-5.4-.9.9-2 1.4-3.2 1.4C5.7 16 4 14.4 4 12.2 4 8.5 9 6 12 2z"/></symbol>
+  <symbol id="suit-heart" viewBox="0 0 24 24"><path d="M12 21S4.5 16.3 2.7 12C1.4 8.7 2.7 5 6 4.2 8 3.7 10.4 4.8 12 7c1.6-2.2 4-3.3 6-2.8 3.3.8 4.6 4.5 3.3 7.8C19.5 16.3 12 21 12 21z"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 5 4 10l5 5v-3.5c4.4 0 7 1.6 8.6 5.5.4-5.4-2.8-9-8.6-9V5z"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4z"/></symbol>
+</svg>
+
+<a class="skip-link" href="#main">Naar de inhoud</a>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="brand" href="spellen.html">
+      <svg class="brand__mark" viewBox="0 0 24 24" aria-hidden="true">
+        <use href="#suit-club" x="0" y="0" width="10" height="10" fill="#0b5f3c"/>
+        <use href="#suit-diamond" x="14" y="0" width="10" height="10" fill="#141d16"/>
+        <use href="#suit-heart" x="0" y="14" width="10" height="10" fill="#141d16"/>
+        <use href="#suit-spade" x="14" y="14" width="10" height="10" fill="#0b5f3c"/>
+      </svg>
+      <span class="brand__name">Boerenbridge</span>
+    </a>
+    <span class="status" aria-label="Offline. Alles is opgeslagen op dit apparaat.">
+      <span class="status__dot"></span>Offline<span class="status__more"> · opgeslagen</span>
+    </span>
+  </div>
+</header>
+
+<main id="main" class="page">
+  <div class="screen-head">
+    <div class="screen-head__row">
+      <h1>Scorebord</h1>
+      <button class="btn btn--secondary btn--sm undo-btn" type="button" aria-label="Laatste ronde ongedaan maken">
+        <svg class="undo-btn__glyph" aria-hidden="true"><use href="#i-undo"/></svg>
+        Ongedaan maken
+      </button>
+    </div>
+    <p class="screen-sub">
+      <span data-view="empty">Nog geen rondes gespeeld.</span>
+      <span data-view="progress confirm">Na 4 van 9 rondes. Sanne staat aan kop.</span>
+      <span data-view="finished">9 van 9 rondes. Sanne wint met 120 punten.</span>
+    </p>
+  </div>
+
+  <div data-view="finished" style="margin-bottom: var(--space-5)">
+    <div class="card card--accent">
+      <div class="section__head" style="margin-bottom: var(--space-1)">
+        <h2 class="result-banner__title">Spel afgelopen</h2>
+        <span class="chip chip--accent">Winnaar: Sanne</span>
+      </div>
+      <p class="result-banner__body">Sanne eindigde met 120 punten, 28 voor Joost. De uitslag is klaar om te delen.</p>
+    </div>
+  </div>
+
+  <div class="split split--score">
+    <div class="stack--4">
+      <section aria-labelledby="tussenstand">
+        <div class="section__head">
+          <h2 id="tussenstand">Tussenstand</h2>
+          <span class="meta" data-view="progress confirm">Na ronde 4</span>
+          <span class="meta" data-view="finished">Eindstand</span>
+        </div>
+
+        <div class="card" data-view="empty">
+          <div class="rank-list">
+            <div class="rank-row">
+              <span class="rank-row__pos">1</span>
+              <span class="badge p1"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+              <span class="rank-row__who"><span class="rank-row__name">Sanne</span></span>
+              <span class="rank-row__total num">0</span>
+            </div>
+            <div class="rank-row">
+              <span class="rank-row__pos">2</span>
+              <span class="badge p2"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+              <span class="rank-row__who"><span class="rank-row__name">Mauro</span></span>
+              <span class="rank-row__total num">0</span>
+            </div>
+            <div class="rank-row">
+              <span class="rank-row__pos">3</span>
+              <span class="badge p3"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+              <span class="rank-row__who"><span class="rank-row__name">Joost</span></span>
+              <span class="rank-row__total num">0</span>
+            </div>
+            <div class="rank-row">
+              <span class="rank-row__pos">4</span>
+              <span class="badge p4"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+              <span class="rank-row__who"><span class="rank-row__name">Lotte</span></span>
+              <span class="rank-row__total num">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" data-view="progress confirm" aria-live="polite">
+          <div class="rank-list">
+            <div class="rank-row rank-row--leader">
+              <span class="rank-row__pos">1</span>
+              <span class="badge p1"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+              <span class="rank-row__who">
+                <span class="rank-row__name">Sanne</span>
+                <span class="rank-row__mark">Aan kop</span>
+              </span>
+              <span class="rank-row__total num">52</span>
+            </div>
+            <div class="rank-row">
+              <span class="rank-row__pos">2</span>
+              <span class="badge p4"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+              <span class="rank-row__who"><span class="rank-row__name">Lotte</span></span>
+              <span class="rank-row__total num">40</span>
+            </div>
+            <div class="rank-row">
+              <span class="rank-row__pos">3</span>
+              <span class="badge p3"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+              <span class="rank-row__who"><span class="rank-row__name">Joost</span></span>
+              <span class="rank-row__total num">30</span>
+            </div>
+            <div class="rank-row">
+              <span class="rank-row__pos">4</span>
+              <span class="badge p2"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+              <span class="rank-row__who"><span class="rank-row__name">Mauro</span></span>
+              <span class="rank-row__total num">4</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" data-view="finished" aria-live="polite">
+          <div class="rank-list">
+            <div class="rank-row rank-row--leader">
+              <span class="rank-row__pos">1</span>
+              <span class="badge p1"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+              <span class="rank-row__who">
+                <span class="rank-row__name">Sanne</span>
+                <span class="rank-row__mark">Winnaar</span>
+              </span>
+              <span class="rank-row__total num">120</span>
+            </div>
+            <div class="rank-row">
+              <span class="rank-row__pos">2</span>
+              <span class="badge p3"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+              <span class="rank-row__who"><span class="rank-row__name">Joost</span></span>
+              <span class="rank-row__total num">92</span>
+            </div>
+            <div class="rank-row">
+              <span class="rank-row__pos">3</span>
+              <span class="badge p4"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+              <span class="rank-row__who"><span class="rank-row__name">Lotte</span></span>
+              <span class="rank-row__total num">51</span>
+            </div>
+            <div class="rank-row">
+              <span class="rank-row__pos">4</span>
+              <span class="badge p2"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+              <span class="rank-row__who"><span class="rank-row__name">Mauro</span></span>
+              <span class="rank-row__total num">37</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="notice" data-view="empty">
+        <span class="notice__title">De tafel is leeg</span>
+        <span class="notice__body">De tussenstand verschijnt zodra de eerste ronde binnen is.</span>
+      </div>
+    </div>
+
+    <div class="stack--4">
+      <section aria-labelledby="per-ronde" data-view="progress confirm">
+        <div class="section__head">
+          <h2 id="per-ronde">Per ronde</h2>
+          <span class="meta">4 rondes</span>
+        </div>
+        <p class="field__hint scroll-hint scroll-hint--progress" style="margin-bottom: var(--space-2)">Veeg zijwaarts voor alle rondes.</p>
+        <div class="matrix-wrap">
+          <table class="matrix">
+            <caption class="visually-hidden">Scores per speler per ronde</caption>
+            <thead>
+              <tr>
+                <th scope="col">Speler</th>
+                <th scope="col"><span class="num">1</span><span class="matrix__cards">1 kaart</span></th>
+                <th scope="col"><span class="num">2</span><span class="matrix__cards">2 kaarten</span></th>
+                <th scope="col"><span class="num">3</span><span class="matrix__cards">3 kaarten</span></th>
+                <th scope="col"><span class="num">4</span><span class="matrix__cards">4 kaarten</span></th>
+                <th scope="col">Totaal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="matrix__name"><svg class="matrix__suit" style="fill: var(--player-1)" aria-hidden="true"><use href="#suit-club"/></svg>Sanne</span></td>
+                <td>10</td><td>13</td><td>13</td><td>16</td><td class="matrix__total">52</td>
+              </tr>
+              <tr>
+                <td><span class="matrix__name"><svg class="matrix__suit" style="fill: var(--player-2)" aria-hidden="true"><use href="#suit-diamond"/></svg>Mauro</span></td>
+                <td>−3</td><td>−3</td><td>13</td><td>−3</td><td class="matrix__total">4</td>
+              </tr>
+              <tr>
+                <td><span class="matrix__name"><svg class="matrix__suit" style="fill: var(--player-3)" aria-hidden="true"><use href="#suit-spade"/></svg>Joost</span></td>
+                <td>10</td><td>10</td><td>−3</td><td>13</td><td class="matrix__total">30</td>
+              </tr>
+              <tr>
+                <td><span class="matrix__name"><svg class="matrix__suit" style="fill: var(--player-4)" aria-hidden="true"><use href="#suit-heart"/></svg>Lotte</span></td>
+                <td>10</td><td>10</td><td>10</td><td>10</td><td class="matrix__total">40</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="per-ronde-eind" data-view="finished">
+        <div class="section__head">
+          <h2 id="per-ronde-eind">Per ronde</h2>
+          <span class="meta">9 rondes</span>
+        </div>
+        <p class="field__hint scroll-hint" style="margin-bottom: var(--space-2)">Veeg zijwaarts voor alle rondes.</p>
+        <div class="matrix-wrap">
+          <table class="matrix">
+            <caption class="visually-hidden">Scores per speler per ronde</caption>
+            <thead>
+              <tr>
+                <th scope="col">Speler</th>
+                <th scope="col"><span class="num">1</span><span class="matrix__cards">1</span></th>
+                <th scope="col"><span class="num">2</span><span class="matrix__cards">2</span></th>
+                <th scope="col"><span class="num">3</span><span class="matrix__cards">3</span></th>
+                <th scope="col"><span class="num">4</span><span class="matrix__cards">4</span></th>
+                <th scope="col"><span class="num">5</span><span class="matrix__cards">5</span></th>
+                <th scope="col"><span class="num">6</span><span class="matrix__cards">5</span></th>
+                <th scope="col"><span class="num">7</span><span class="matrix__cards">4</span></th>
+                <th scope="col"><span class="num">8</span><span class="matrix__cards">3</span></th>
+                <th scope="col"><span class="num">9</span><span class="matrix__cards">2</span></th>
+                <th scope="col">Totaal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="matrix__name"><svg class="matrix__suit" style="fill: var(--player-1)" aria-hidden="true"><use href="#suit-club"/></svg>Sanne</span></td>
+                <td>10</td><td>13</td><td>13</td><td>16</td><td>16</td><td>13</td><td>13</td><td>13</td><td>13</td><td class="matrix__total">120</td>
+              </tr>
+              <tr>
+                <td><span class="matrix__name"><svg class="matrix__suit" style="fill: var(--player-2)" aria-hidden="true"><use href="#suit-diamond"/></svg>Mauro</span></td>
+                <td>−3</td><td>−3</td><td>13</td><td>−3</td><td>13</td><td>13</td><td>13</td><td>−3</td><td>−3</td><td class="matrix__total">37</td>
+              </tr>
+              <tr>
+                <td><span class="matrix__name"><svg class="matrix__suit" style="fill: var(--player-3)" aria-hidden="true"><use href="#suit-spade"/></svg>Joost</span></td>
+                <td>10</td><td>10</td><td>−3</td><td>13</td><td>13</td><td>13</td><td>13</td><td>13</td><td>10</td><td class="matrix__total">92</td>
+              </tr>
+              <tr>
+                <td><span class="matrix__name"><svg class="matrix__suit" style="fill: var(--player-4)" aria-hidden="true"><use href="#suit-heart"/></svg>Lotte</span></td>
+                <td>10</td><td>10</td><td>10</td><td>10</td><td>−3</td><td>−3</td><td>−3</td><td>10</td><td>10</td><td class="matrix__total">51</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="rondes" data-view="progress confirm">
+        <div class="section__head">
+          <h2 id="rondes">Rondes</h2>
+          <span class="meta">Laatste vier</span>
+        </div>
+        <div class="card">
+          <div class="round-list">
+            <div class="round-row">
+              <span class="round-row__copy">
+                <span class="round-row__title">Ronde 4 · 5 kaarten</span>
+                <span class="round-row__sub">Sanne +16, beste van de ronde</span>
+              </span>
+              <button class="round-correct" type="button">Corrigeer</button>
+            </div>
+            <div class="round-row">
+              <span class="round-row__copy">
+                <span class="round-row__title">Ronde 3 · 3 kaarten</span>
+                <span class="round-row__sub">Sanne en Mauro +13</span>
+              </span>
+              <button class="round-correct" type="button">Corrigeer</button>
+            </div>
+            <div class="round-row">
+              <span class="round-row__copy">
+                <span class="round-row__title">Ronde 2 · 2 kaarten</span>
+                <span class="round-row__sub">Sanne +13</span>
+              </span>
+              <button class="round-correct" type="button">Corrigeer</button>
+            </div>
+            <div class="round-row">
+              <span class="round-row__copy">
+                <span class="round-row__title">Ronde 1 · 1 kaart</span>
+                <span class="round-row__sub">Drie keer +10</span>
+              </span>
+              <button class="round-correct" type="button">Corrigeer</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="action-dock action-dock--inline">
+    <div class="action-dock__inner">
+      <a class="btn btn--primary" href="biedingen.html" data-view="empty">Eerste ronde</a>
+      <a class="btn btn--primary" href="biedingen.html" data-view="progress confirm">Volgende ronde</a>
+      <a class="btn btn--primary" href="afgelopen.html" data-view="finished">Bekijk uitslag</a>
+    </div>
+  </div>
+</main>
+
+<div class="sheet-layer" hidden>
+  <div class="sheet-scrim"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="sheet__grabber" aria-hidden="true"></div>
+    <div class="sheet__head">
+      <div>
+        <h2 class="sheet__title" id="confirm-title">Ronde 3 corrigeren?</h2>
+        <p class="sheet__sub">De scores van ronde 3 worden opnieuw berekend.</p>
+      </div>
+      <button class="icon-btn" type="button" aria-label="Sluiten">
+        <svg class="icon-btn__glyph"><use href="#i-close"/></svg>
+      </button>
+    </div>
+    <p class="field__hint" style="margin-bottom: var(--space-4)">De rondes daarna blijven staan. Alleen ronde 3 verandert.</p>
+    <div class="sheet__actions">
+      <button class="btn btn--secondary" type="button">Annuleren</button>
+      <button class="btn btn--primary" type="button">Corrigeren</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const state = new URLSearchParams(location.search).get('state') || 'progress';
+    document.body.dataset.state = state;
+    const viewState = state === 'confirm' ? 'progress' : state;
+    document.querySelectorAll('[data-view]').forEach((el) => {
+      const views = el.dataset.view.split(' ');
+      el.hidden = !(views.includes(viewState) || (state === 'confirm' && views.includes('confirm')));
+    });
+    const sheet = document.querySelector('.sheet-layer');
+    if (sheet) sheet.hidden = state !== 'confirm';
+    const undo = document.querySelector('.undo-btn');
+    if (undo && state === 'empty') undo.disabled = true;
+  })();
+</script>
+</body>
+</html>

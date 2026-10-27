@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f5ef">
+<title>Nieuw spel · Boerenbridge</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-state="progress">
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="suit-club" viewBox="0 0 24 24"><path d="M12 2a3.5 3.5 0 0 1 3.2 4.9 3.5 3.5 0 1 1 1.9 6.3c-.8 0-1.5-.3-2.1-.7.3 2.2 1.1 4 2.5 5.5H6.5c1.4-1.5 2.2-3.3 2.5-5.5-.6.4-1.3.7-2.1.7a3.5 3.5 0 1 1 1.9-6.3A3.5 3.5 0 0 1 12 2z"/></symbol>
+  <symbol id="suit-diamond" viewBox="0 0 24 24"><path d="M12 2l8 10-8 10-8-10z"/></symbol>
+  <symbol id="suit-spade" viewBox="0 0 24 24"><path d="M12 2c3 4 8 6.5 8 10.2 0 2.2-1.7 3.8-3.8 3.8-1.2 0-2.3-.5-3.2-1.4.1 2 .8 3.7 2 5.4H9c1.2-1.7 1.9-3.4 2-5.4-.9.9-2 1.4-3.2 1.4C5.7 16 4 14.4 4 12.2 4 8.5 9 6 12 2z"/></symbol>
+  <symbol id="suit-heart" viewBox="0 0 24 24"><path d="M12 21S4.5 16.3 2.7 12C1.4 8.7 2.7 5 6 4.2 8 3.7 10.4 4.8 12 7c1.6-2.2 4-3.3 6-2.8 3.3.8 4.6 4.5 3.3 7.8C19.5 16.3 12 21 12 21z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 11h14v2H5z"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4z"/></symbol>
+</svg>
+
+<a class="skip-link" href="#main">Naar de inhoud</a>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="brand" href="spellen.html">
+      <svg class="brand__mark" viewBox="0 0 24 24" aria-hidden="true">
+        <use href="#suit-club" x="0" y="0" width="10" height="10" fill="#0b5f3c"/>
+        <use href="#suit-diamond" x="14" y="0" width="10" height="10" fill="#141d16"/>
+        <use href="#suit-heart" x="0" y="14" width="10" height="10" fill="#141d16"/>
+        <use href="#suit-spade" x="14" y="14" width="10" height="10" fill="#0b5f3c"/>
+      </svg>
+      <span class="brand__name">Boerenbridge</span>
+    </a>
+    <span class="status" aria-label="Offline. Alles is opgeslagen op dit apparaat.">
+      <span class="status__dot"></span>Offline<span class="status__more"> · opgeslagen</span>
+    </span>
+  </div>
+</header>
+
+<main id="main" class="page">
+  <div class="split">
+    <div>
+      <div class="screen-head">
+        <h1>Nieuw spel</h1>
+        <p class="screen-sub">Wie zitten er aan tafel, en hoe hoog spelen jullie?</p>
+        <p class="meta preview-line" data-view="progress">9 rondes · 1 → 5 → 1 kaarten per speler</p>
+        <p class="meta preview-line" data-view="invalid">9 rondes · 1 → 5 → 1 kaarten per speler</p>
+        <p class="meta preview-line" data-view="empty">25 rondes · 1 → 13 → 1 kaarten per speler</p>
+      </div>
+
+      <form class="stack--4" action="#" onsubmit="return false">
+        <section aria-labelledby="spelers">
+          <div class="section__head">
+            <h2 id="spelers">Spelers</h2>
+            <span class="meta">2 tot 8</span>
+          </div>
+
+          <div data-view="empty" class="stack">
+            <p class="field__hint" id="spelers-hint">Vul minstens twee namen in. De rest kun je later toevoegen.</p>
+            <div class="card stack">
+              <div class="player-row">
+                <span class="player-row__seat">1</span>
+                <input class="name-input" type="text" placeholder="Naam" aria-label="Naam van speler 1">
+                <button class="icon-btn" type="button" aria-label="Speler 1 verwijderen" disabled>
+                  <svg class="icon-btn__glyph"><use href="#i-close"/></svg>
+                </button>
+              </div>
+              <div class="player-row">
+                <span class="player-row__seat">2</span>
+                <input class="name-input" type="text" placeholder="Naam" aria-label="Naam van speler 2">
+                <button class="icon-btn" type="button" aria-label="Speler 2 verwijderen" disabled>
+                  <svg class="icon-btn__glyph"><use href="#i-close"/></svg>
+                </button>
+              </div>
+              <button class="add-row" type="button">
+                <svg class="step-btn__glyph" aria-hidden="true"><use href="#i-plus"/></svg>
+                Speler toevoegen
+              </button>
+            </div>
+          </div>
+
+          <div data-view="progress" class="stack">
+            <div class="card stack">
+              <div class="player-row">
+                <span class="player-row__seat">1</span>
+                <span class="badge p1"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+                <input class="name-input" type="text" value="Sanne" aria-label="Naam van speler 1">
+                <button class="icon-btn" type="button" aria-label="Speler 1 verwijderen">
+                  <svg class="icon-btn__glyph"><use href="#i-close"/></svg>
+                </button>
+              </div>
+              <div class="player-row">
+                <span class="player-row__seat">2</span>
+                <span class="badge p2"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+                <input class="name-input" type="text" value="Mauro" aria-label="Naam van speler 2">
+                <button class="icon-btn" type="button" aria-label="Speler 2 verwijderen">
+                  <svg class="icon-btn__glyph"><use href="#i-close"/></svg>
+                </button>
+              </div>
+              <div class="player-row">
+                <span class="player-row__seat">3</span>
+                <span class="badge p3"><svg class="badge__suit"><use href="#suit-spade"/></svg></span>
+                <input class="name-input" type="text" value="Joost" aria-label="Naam van speler 3">
+                <button class="icon-btn" type="button" aria-label="Speler 3 verwijderen">
+                  <svg class="icon-btn__glyph"><use href="#i-close"/></svg>
+                </button>
+              </div>
+              <div class="player-row">
+                <span class="player-row__seat">4</span>
+                <span class="badge p4"><svg class="badge__suit"><use href="#suit-heart"/></svg></span>
+                <input class="name-input" type="text" value="Lotte" aria-label="Naam van speler 4">
+                <button class="icon-btn" type="button" aria-label="Speler 4 verwijderen">
+                  <svg class="icon-btn__glyph"><use href="#i-close"/></svg>
+                </button>
+              </div>
+              <button class="add-row" type="button">
+                <svg class="step-btn__glyph" aria-hidden="true"><use href="#i-plus"/></svg>
+                Speler toevoegen
+              </button>
+            </div>
+          </div>
+
+          <div data-view="invalid" class="stack">
+            <p class="field-error" role="alert" id="naam-error">Vul een naam in voor elke speler.</p>
+            <div class="card stack">
+              <div class="player-row">
+                <span class="player-row__seat">1</span>
+                <span class="badge p1"><svg class="badge__suit"><use href="#suit-club"/></svg></span>
+                <input class="name-input" type="text" value="Sanne" aria-label="Naam van speler 1">
+                <button class="icon-btn" type="button" aria-label="Speler 1 verwijderen" disabled>
+                  <svg class="icon-btn__glyph"><use href="#i-close"/></svg>
+                </button>
+              </div>
+              <div class="player-row">
+                <span class="player-row__seat">2</span>
+                <span class="badge p2"><svg class="badge__suit"><use href="#suit-diamond"/></svg></span>
+                <input class="name-input" type="text" value="" placeholder="Naam" aria-label="Naam van speler 2" aria-invalid="true">
+                <button class="icon-btn" type="button" aria-label="Speler 2 verwijderen" disabled>
+                  <svg class="icon-btn__glyph"><use href="#i-close"/></svg>
+                </button>
+              </div>
+              <button class="add-row" type="button">
+                <svg class="step-btn__glyph" aria-hidden="true"><use href="#i-plus"/></svg>
+                Speler toevoegen
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="richting" class="card">
+          <div class="section__head">
+            <h2 id="richting">Richting</h2>
+          </div>
+          <div class="segmented">
+            <button class="segmented__option" type="button" aria-pressed="true">
+              <span class="segmented__name">Piramide</span>
+              <span class="segmented__hint">Omhoog en weer omlaag</span>
+            </button>
+            <button class="segmented__option" type="button" aria-pressed="false">
+              <span class="segmented__name">Alleen omhoog</span>
+              <span class="segmented__hint">Stop bij de top</span>
+            </button>
+          </div>
+        </section>
+
+        <section aria-labelledby="maximum" class="card">
+          <div class="section__head">
+            <h2 id="maximum">Maximaal aantal kaarten</h2>
+          </div>
+          <div class="option-row">
+            <div class="option-row__copy">
+              <span class="option-row__name">Kaarten per speler</span>
+              <span class="option-row__hint">0 is automatisch: 13 kaarten bij vier spelers.</span>
+            </div>
+            <div class="stepper">
+              <button class="step-btn" type="button" aria-label="Maximum verlagen">
+                <svg class="step-btn__glyph"><use href="#i-minus"/></svg>
+              </button>
+              <span class="value-btn" data-view="progress" aria-label="Maximaal 5 kaarten per speler">5</span>
+              <span class="value-btn" data-view="invalid" aria-label="Maximaal 5 kaarten per speler">5</span>
+              <span class="value-btn value-btn--empty" data-view="empty" aria-label="Automatisch maximum">Auto</span>
+              <button class="step-btn step-btn--plus" type="button" aria-label="Maximum verhogen">
+                <svg class="step-btn__glyph"><use href="#i-plus"/></svg>
+              </button>
+            </div>
+          </div>
+        </section>
+      </form>
+    </div>
+
+    <aside class="split__aside" aria-label="Voorbeeld van het spel">
+      <div class="card">
+        <div class="preview-summary">
+          <h2>Jullie spelen</h2>
+          <span class="preview-rounds" data-view="progress"><span class="num">9</span> <span class="preview-rounds__unit">rondes</span></span>
+          <span class="preview-rounds" data-view="invalid"><span class="num">9</span> <span class="preview-rounds__unit">rondes</span></span>
+          <span class="preview-rounds" data-view="empty"><span class="num">25</span> <span class="preview-rounds__unit">rondes</span></span>
+        </div>
+        <div class="stair" aria-hidden="true" data-view="progress">
+          <div class="stair__bar" style="height:10px"></div>
+          <div class="stair__bar" style="height:18px"></div>
+          <div class="stair__bar" style="height:26px"></div>
+          <div class="stair__bar" style="height:34px"></div>
+          <div class="stair__bar stair__bar--peak" style="height:44px"></div>
+          <div class="stair__bar" style="height:34px"></div>
+          <div class="stair__bar" style="height:26px"></div>
+          <div class="stair__bar" style="height:18px"></div>
+          <div class="stair__bar" style="height:10px"></div>
+        </div>
+        <div class="stair" aria-hidden="true" data-view="invalid">
+          <div class="stair__bar" style="height:10px"></div>
+          <div class="stair__bar" style="height:18px"></div>
+          <div class="stair__bar" style="height:26px"></div>
+          <div class="stair__bar" style="height:34px"></div>
+          <div class="stair__bar stair__bar--peak" style="height:44px"></div>
+          <div class="stair__bar" style="height:34px"></div>
+          <div class="stair__bar" style="height:26px"></div>
+          <div class="stair__bar" style="height:18px"></div>
+          <div class="stair__bar" style="height:10px"></div>
+        </div>
+        <div class="stair" aria-hidden="true" data-view="empty">
+          <div class="stair__bar" style="height:8px"></div>
+          <div class="stair__bar" style="height:10px"></div>
+          <div class="stair__bar" style="height:12px"></div>
+          <div class="stair__bar" style="height:16px"></div>
+          <div class="stair__bar" style="height:20px"></div>
+          <div class="stair__bar" style="height:24px"></div>
+          <div class="stair__bar" style="height:28px"></div>
+          <div class="stair__bar" style="height:32px"></div>
+          <div class="stair__bar" style="height:36px"></div>
+          <div class="stair__bar" style="height:40px"></div>
+          <div class="stair__bar" style="height:44px"></div>
+          <div class="stair__bar" style="height:40px"></div>
+          <div class="stair__bar" style="height:36px"></div>
+          <div class="stair__bar" style="height:32px"></div>
+          <div class="stair__bar" style="height:28px"></div>
+          <div class="stair__bar" style="height:24px"></div>
+          <div class="stair__bar" style="height:20px"></div>
+          <div class="stair__bar" style="height:16px"></div>
+          <div class="stair__bar" style="height:12px"></div>
+          <div class="stair__bar" style="height:10px"></div>
+          <div class="stair__bar" style="height:8px"></div>
+        </div>
+        <p class="preview-sequence" data-view="progress">1 → 5 → 1 kaarten per speler</p>
+        <p class="preview-sequence" data-view="invalid">1 → 5 → 1 kaarten per speler</p>
+        <p class="preview-sequence" data-view="empty">1 → 13 → 1 kaarten per speler</p>
+      </div>
+
+      <div class="hint">
+        <svg class="hint__icon" aria-hidden="true"><use href="#suit-club"/></svg>
+        <span>De blinde regel geldt elke ronde: de biedingen mogen samen niet precies het aantal kaarten zijn.</span>
+      </div>
+
+      <div class="action-dock">
+        <div class="action-dock__inner">
+          <button class="btn btn--primary btn--block" type="button">Spel starten</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script>
+  (() => {
+    const state = new URLSearchParams(location.search).get('state') || 'progress';
+    document.body.dataset.state = state;
+    document.querySelectorAll('[data-view]').forEach((el) => {
+      el.hidden = el.dataset.view !== state;
+    });
+    const start = document.querySelector('.action-dock .btn');
+    if (state !== 'progress') {
+      start.disabled = true;
+      start.setAttribute('aria-describedby', state === 'empty' ? 'spelers-hint' : 'naam-error');
+    }
+  })();
+</script>
+</body>
+</html>
